@@ -1,0 +1,21 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новый Тарифный Период{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Новый тарифный период</h1>
+            <p class="text-secondary mb-0">Профиль: {{ electricity_tariff_profile.name }}</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_tariff_profile_show', {'uuid': electricity_tariff_profile.uuid}) }}">К профилю</a>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_electricity_tariff_period/_form.html.twig', {
+                cancel_path: path('app_admin_electricity_tariff_profile_show', {'uuid': electricity_tariff_profile.uuid}),
+            }) }}
+        </div>
+    </section>
+{% endblock %}

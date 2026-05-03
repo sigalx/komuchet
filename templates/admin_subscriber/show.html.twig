@@ -1,0 +1,158 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Абонент {{ subscriber.displayName }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Абонент {{ subscriber.displayName }}</h1>
+            <p class="text-secondary mb-0">Карточка абонента текущего хозяйства.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_subscriber_index') }}">К списку</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_subscriber_edit', {'uuid': subscriber.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Фамилия</dt>
+                <dd class="col-sm-9">{{ subscriber.lastName }}</dd>
+
+                <dt class="col-sm-3">Имя</dt>
+                <dd class="col-sm-9">{{ subscriber.firstName }}</dd>
+
+                <dt class="col-sm-3">Отчество</dt>
+                <dd class="col-sm-9">{{ subscriber.secondName ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9">{{ subscriber.contactEmail ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Телефон</dt>
+                <dd class="col-sm-9">{{ subscriber.contactPhone ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Пользователь</dt>
+                <dd class="col-sm-9">
+                    {% if subscriber.user %}
+                        <a href="{{ path('app_admin_user_show', {'uuid': subscriber.user.uuid}) }}">{{ subscriber.user.primaryEmail ?: 'Пользователь без email' }}</a>
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Заметки</dt>
+                <dd class="col-sm-9">{{ subscriber.notes ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ subscriber.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлен</dt>
+                <dd class="col-sm-9">{{ subscriber.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Учетная запись</h2>
+
+            {% if subscriber.user %}
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div>
+                        <div class="fw-semibold">
+                            <a href="{{ path('app_admin_user_show', {'uuid': subscriber.user.uuid}) }}">{{ subscriber.user.primaryEmail ?: 'Пользователь без email' }}</a>
+                        </div>
+                        <div class="text-secondary small">Связанный пользователь для входа в абонентский интерфейс.</div>
+                    </div>
+                    <form method="post" action="{{ path('app_admin_subscriber_user_unlink', {'uuid': subscriber.uuid}) }}" onsubmit="return confirm('Отвязать пользователя от абонента {{ subscriber.displayName|e('js') }}?');">
+                        <input type="hidden" name="_token" value="{{ csrf_token('unlink_subscriber_user' ~ subscriber.uuid) }}">
+                        <button class="btn btn-outline-danger">Отвязать пользователя</button>
+                    </form>
+                </div>
+            {% elseif portal_access_grant_form %}
+                {{ form_start(portal_access_grant_form) }}
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">{{ form_row(portal_access_grant_form.email) }}</div>
+                        <div class="col-md-4"><button class="btn btn-primary">Подключить к порталу</button></div>
+                    </div>
+                {{ form_end(portal_access_grant_form) }}
+            {% else %}
+                <p class="text-secondary mb-0">Связь с пользователем недоступна.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Доступ к участкам</h2>
+                    <p class="text-secondary mb-0">Активные участки, которые видит этот абонент.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Участок</th>
+                            <th>Роль</th>
+                            <th>Выдан</th>
+                            <th>Заметки</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for access in active_accesses %}
+                        <tr>
+                            <td>
+                                <a class="fw-semibold" href="{{ path('app_admin_account_show', {'uuid': access.account.uuid}) }}">{{ access.account.number }}</a>
+                            </td>
+                            <td>{{ access.accessRole.label }}</td>
+                            <td>{{ access.grantedAt|workspace_datetime }}</td>
+                            <td class="text-secondary">{{ access.notes ?: '—' }}</td>
+                            <td class="text-end">
+                                <form method="post" action="{{ path('app_admin_subscriber_access_revoke', {'uuid': subscriber.uuid, 'accountUuid': access.account.uuid}) }}" onsubmit="return confirm('Отозвать доступ к участку {{ access.account.number|e('js') }}?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('revoke_access' ~ subscriber.uuid ~ access.account.uuid) }}">
+                                    <button class="btn btn-outline-danger btn-sm">Отозвать</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Доступ к участкам пока не выдан.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Выдать доступ</h2>
+
+            {% if access_grant_form.account.vars.choices|length > 0 %}
+                {{ form_start(access_grant_form) }}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            {{ form_row(access_grant_form.account) }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form_row(access_grant_form.accessRole) }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form_row(access_grant_form.notes) }}
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary">Выдать доступ</button>
+                {{ form_end(access_grant_form) }}
+            {% else %}
+                <p class="text-secondary mb-0">Нет активных участков без доступа для этого абонента.</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

@@ -1,0 +1,4 @@
+<form method="post" action="{{ path('app_admin_electricity_consumption_band_delete', {'uuid': electricity_consumption_band.uuid}) }}" onsubmit="return confirm('Удалить диапазон потребления {{ electricity_consumption_band.name|e('js') }}?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ electricity_consumption_band.uuid) }}">
+    <button class="btn btn-outline-danger">Удалить</button>
+</form>

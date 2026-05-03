@@ -1,0 +1,21 @@
+{{ form_start(form) }}
+    <div class="row g-3">
+        <div class="col-md-4">
+            {{ form_row(form.tariffZone) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.readingValue) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.takenOn) }}
+        </div>
+        <div class="col-12">
+            {{ form_row(form.notes) }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_meter_show', {'uuid': electricity_meter.uuid}) }}">Отмена</a>
+    </div>
+{{ form_end(form) }}

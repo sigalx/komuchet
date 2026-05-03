@@ -1,0 +1,16 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новое Правило Диапазонов Потребления{% endblock %}
+
+{% block admin_body %}
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Новое правило диапазонов потребления</h1>
+        <p class="text-secondary mb-0">Правило будет создано с областью применения “все участки”.</p>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_electricity_consumption_band_rule/_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

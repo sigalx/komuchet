@@ -1,0 +1,83 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Тарифный Профиль {{ electricity_tariff_profile.name }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Тарифный профиль {{ electricity_tariff_profile.name }}</h1>
+            <p class="text-secondary mb-0">{{ electricity_tariff_profile.description ?: 'Без описания' }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_tariff_profile_index') }}">К списку</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_electricity_tariff_profile_edit', {'uuid': electricity_tariff_profile.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Код</dt>
+                <dd class="col-sm-9"><code>{{ electricity_tariff_profile.code }}</code></dd>
+
+                <dt class="col-sm-3">Название</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_profile.name }}</dd>
+
+                <dt class="col-sm-3">Описание</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_profile.description ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_profile.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлен</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_profile.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Тарифные периоды</h2>
+                    <p class="text-secondary mb-0">История действия ставок внутри этого профиля.</p>
+                </div>
+                <a class="btn btn-primary" href="{{ path('app_admin_electricity_tariff_period_new', {'profileUuid': electricity_tariff_profile.uuid}) }}">Добавить период</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Действует с</th>
+                            <th>Действует до</th>
+                            <th>Документ-основание</th>
+                            <th>Обновлен</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for tariff_period in tariff_periods %}
+                        <tr>
+                            <td>{{ tariff_period.validFrom|date('d.m.Y') }}</td>
+                            <td>{{ tariff_period.validTo ? tariff_period.validTo|date('d.m.Y') : 'бессрочно' }}</td>
+                            <td class="text-secondary">{{ tariff_period.sourceDocument ?: '—' }}</td>
+                            <td>{{ tariff_period.updatedAt|workspace_datetime }}</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_tariff_period_show', {'uuid': tariff_period.uuid}) }}">Открыть</a>
+                                    <a class="btn btn-outline-primary" href="{{ path('app_admin_electricity_tariff_period_edit', {'uuid': tariff_period.uuid}) }}">Изменить</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Тарифные периоды пока не созданы.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+{% endblock %}

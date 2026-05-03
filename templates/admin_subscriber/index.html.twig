@@ -1,0 +1,94 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Абоненты{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Абоненты</h1>
+            <p class="text-secondary mb-0">Люди, которым можно выдавать доступ к участкам.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ path('app_admin_subscriber_new') }}">Создать абонента</a>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_subscriber_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+                <div class="col-12 col-xl-4 col-lg-6">
+                    <label for="subscriber-search-filter" class="form-label">Поиск</label>
+                    <input id="subscriber-search-filter" class="form-control" type="search" name="q" value="{{ filters.q }}" placeholder="ФИО, email или телефон">
+                </div>
+
+                <div class="col-12 col-xl-3 col-lg-6">
+                    <label for="subscriber-portal-filter" class="form-label">Портал</label>
+                    <select id="subscriber-portal-filter" class="form-select" name="portal">
+                        <option value="all" {{ filters.portal == 'all' ? 'selected' }}>Любые абоненты</option>
+                        <option value="linked" {{ filters.portal == 'linked' ? 'selected' }}>С доступом к порталу</option>
+                        <option value="unlinked" {{ filters.portal == 'unlinked' ? 'selected' }}>Без доступа к порталу</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-3 col-lg-6">
+                    <label for="subscriber-account-filter" class="form-label">Участки</label>
+                    <select id="subscriber-account-filter" class="form-select" name="accounts">
+                        <option value="all" {{ filters.accounts == 'all' ? 'selected' }}>Любые абоненты</option>
+                        <option value="with_accounts" {{ filters.accounts == 'with_accounts' ? 'selected' }}>С активными участками</option>
+                        <option value="without_accounts" {{ filters.accounts == 'without_accounts' ? 'selected' }}>Без активных участков</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_subscriber_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'full_name', label: 'ФИО', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'email', label: 'Email', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'phone', label: 'Телефон', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'updated_at', label: 'Обновлен', sort: sort}) }}</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for subscriber in subscribers %}
+                    <tr>
+                        <td class="fw-semibold">{{ subscriber.displayName }}</td>
+                        <td class="text-secondary">{{ subscriber.contactEmail ?: '—' }}</td>
+                        <td class="text-secondary">{{ subscriber.contactPhone ?: '—' }}</td>
+                        <td>{{ subscriber.updatedAt|workspace_datetime }}</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-outline-secondary" href="{{ path('app_admin_subscriber_show', {'uuid': subscriber.uuid}) }}">Открыть</a>
+                                <a class="btn btn-outline-primary" href="{{ path('app_admin_subscriber_edit', {'uuid': subscriber.uuid}) }}">Изменить</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-5">
+                            {% if filters.q or filters.portal != 'all' or filters.accounts != 'all' %}
+                                Абоненты не найдены.
+                            {% else %}
+                                Абоненты пока не созданы.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

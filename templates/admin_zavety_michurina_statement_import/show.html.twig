@@ -1,0 +1,266 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Пачка импорта{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <a class="small text-decoration-none" href="{{ path('app_admin_zavety_michurina_statement_import_index') }}">← К пачкам импорта</a>
+            <h1 class="h3 mt-2 mb-1">{{ batch.name ?: 'Пачка от ' ~ batch.createdAt|workspace_datetime('d.m.Y H:i') }}</h1>
+            <p class="text-secondary mb-0">Создана {{ batch.createdAt|workspace_datetime }}.</p>
+        </div>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            {% set failed_count = summary.failed ?? 0 %}
+            {% set applied_count = summary.applied ?? 0 %}
+            {% set needs_fix_count = apply_readiness.blocked + failed_count %}
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge text-bg-light border">Всего файлов: {{ summary.total }}</span>
+                {% for status in status_cases %}
+                    {% set count = summary[status.value] ?? 0 %}
+                    {% if count > 0 %}
+                        <span class="badge {{ status.badgeClass() }}">{{ status.label() }}: {{ count }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <hr>
+
+            <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
+                <div class="col">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-secondary">Всего в пачке</div>
+                        <div class="display-6 fs-3 fw-semibold">{{ summary.total ?? 0 }}</div>
+                        <div class="small text-secondary">Все загруженные PDF в этой пачке.</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-secondary">Готово к применению</div>
+                        <div class="display-6 fs-3 fw-semibold text-primary">{{ apply_readiness.ready }}</div>
+                        {% if apply_readiness.ready > 0 %}
+                            <a class="small" href="{{ path('app_admin_zavety_michurina_statement_import_show', {uuid: batch.uuid, readiness: 'ready'}) }}">Показать готовые файлы</a>
+                        {% else %}
+                            <div class="small text-secondary">Готовых файлов нет.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-secondary">Требует исправления</div>
+                        <div class="display-6 fs-3 fw-semibold {{ needs_fix_count > 0 ? 'text-danger' : '' }}">{{ needs_fix_count }}</div>
+                        <div class="d-flex flex-column gap-1 small">
+                            {% if apply_readiness.blocked > 0 %}
+                                <a href="{{ path('app_admin_zavety_michurina_statement_import_show', {uuid: batch.uuid, readiness: 'blocked'}) }}">Блокеры предпросмотра: {{ apply_readiness.blocked }}</a>
+                            {% else %}
+                                <span class="text-secondary">Блокеров предпросмотра нет.</span>
+                            {% endif %}
+                            {% if failed_count > 0 %}
+                                <a href="{{ path('app_admin_zavety_michurina_statement_import_show', {uuid: batch.uuid, status: 'failed'}) }}">Ошибки разбора: {{ failed_count }}</a>
+                            {% else %}
+                                <span class="text-secondary">Ошибок разбора нет.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="border rounded p-3 h-100">
+                        <div class="small text-secondary">Уже применено</div>
+                        <div class="display-6 fs-3 fw-semibold text-success">{{ applied_count }}</div>
+                        {% if applied_count > 0 %}
+                            <a class="small" href="{{ path('app_admin_zavety_michurina_statement_import_show', {uuid: batch.uuid, status: 'applied'}) }}">Показать примененные файлы</a>
+                        {% else %}
+                            <div class="small text-secondary">Примененных файлов пока нет.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if (summary.parsed ?? 0) > 0 %}
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-4">
+                    <div>
+                        <div class="fw-semibold">Массовое применение распознанных файлов</div>
+                        <div class="small text-secondary">
+                            Применятся: {{ apply_readiness.ready }},
+                            заблокированы предпросмотром: {{ apply_readiness.blocked }}.
+                        </div>
+                    </div>
+                    {% if apply_readiness.blocked > 0 %}
+                        <button class="btn btn-outline-secondary" type="button" disabled>Исправьте блокеры перед применением</button>
+                    {% elseif apply_readiness.ready > 0 %}
+                        <form method="post" action="{{ path('app_admin_zavety_michurina_statement_import_apply_batch', {uuid: batch.uuid}) }}" onsubmit="return confirm('Применить распознанные файлы этой пачки: {{ apply_readiness.ready }} шт.?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('apply_zm_statement_import_batch' ~ batch.uuid) }}">
+                            <button class="btn btn-primary" type="submit">Применить готовые</button>
+                        </form>
+                    {% else %}
+                        <button class="btn btn-outline-secondary" type="button" disabled>Нет готовых файлов</button>
+                    {% endif %}
+                </div>
+
+                {% if apply_readiness.blocked_files %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <div class="fw-semibold mb-2">Файлы с блокерами предпросмотра</div>
+                        <ul class="mb-0">
+                            {% for blocked_file in apply_readiness.blocked_files %}
+                                <li>
+                                    <a href="{{ path('app_admin_zavety_michurina_statement_import_file_show', {uuid: blocked_file.uuid}) }}">{{ blocked_file.filename }}</a>
+                                    <div class="small">
+                                        {{ blocked_file.messages|join('; ') }}
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% if apply_readiness.blocked_overflow > 0 %}
+                            <div class="small mt-2">Еще файлов с блокерами: {{ apply_readiness.blocked_overflow }}.</div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if apply_readiness.ready_files %}
+                    <details class="mt-3">
+                        <summary>Файлы, которые применятся</summary>
+                        <ul class="small mb-0 mt-2">
+                            {% for ready_file in apply_readiness.ready_files %}
+                                <li><a href="{{ path('app_admin_zavety_michurina_statement_import_file_show', {uuid: ready_file.uuid}) }}">{{ ready_file.filename }}</a></li>
+                            {% endfor %}
+                        </ul>
+                        {% if apply_readiness.ready_overflow > 0 %}
+                            <div class="small text-secondary mt-2">Еще готовых файлов: {{ apply_readiness.ready_overflow }}.</div>
+                        {% endif %}
+                    </details>
+                {% endif %}
+            {% else %}
+                <div class="small text-secondary mt-4">
+                    Нет распознанных файлов, ожидающих применения.
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-body border-bottom">
+            <form method="get" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label" for="import-file-status-filter">Статус</label>
+                    <select id="import-file-status-filter" name="status" class="form-select">
+                        <option value="all" {{ filters.status == 'all' ? 'selected' }}>Все статусы</option>
+                        {% for status in status_cases %}
+                            <option value="{{ status.value }}" {{ filters.status == status.value ? 'selected' }}>{{ status.label() }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label" for="import-file-readiness-filter">Готовность</label>
+                    <select id="import-file-readiness-filter" name="readiness" class="form-select">
+                        <option value="all" {{ filters.readiness == 'all' ? 'selected' }}>Все файлы</option>
+                        <option value="ready" {{ filters.readiness == 'ready' ? 'selected' }}>Только готовые к применению</option>
+                        <option value="blocked" {{ filters.readiness == 'blocked' ? 'selected' }}>Только с блокерами предпросмотра</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-auto">
+                    <button class="btn btn-outline-primary" type="submit">Применить фильтр</button>
+                </div>
+                {% if filters.status != 'all' or filters.readiness != 'all' %}
+                    <div class="col-12 col-md-auto">
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_zavety_michurina_statement_import_show', {uuid: batch.uuid}) }}">Сбросить</a>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'created_at', label: 'Добавлен', sort: sort, route_parameters: {uuid: batch.uuid}}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'original_filename', label: 'Файл', sort: sort, route_parameters: {uuid: batch.uuid}}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'status', label: 'Статус', sort: sort, route_parameters: {uuid: batch.uuid}}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'detected_account_number', label: 'Участок', sort: sort, route_parameters: {uuid: batch.uuid}}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'detected_subscriber_full_name', label: 'ФИО', sort: sort, route_parameters: {uuid: batch.uuid}}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'parsed_at', label: 'Распознан', sort: sort, route_parameters: {uuid: batch.uuid}}) }}</th>
+                        <th>Итог</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for file in files %}
+                    {% set apply_log = apply_logs[file.uuid.toRfc4122()] ?? null %}
+                    {% set apply_result = apply_log ? (apply_log.newValues.result ?? null) : null %}
+                    {% set apply_totals = apply_result ? (apply_result.totals ?? {}) : {} %}
+                    {% set preview_blockers = preview_blockers_by_file[file.uuid.toRfc4122()] ?? [] %}
+                    <tr>
+                        <td>{{ file.createdAt|workspace_datetime }}</td>
+                        <td>{{ file.originalFilename }}</td>
+                        <td><span class="badge {{ file.status.badgeClass() }}">{{ file.status.label() }}</span></td>
+                        <td>{{ file.detectedAccountNumber ?: '—' }}</td>
+                        <td>{{ file.detectedSubscriberFullName ?: '—' }}</td>
+                        <td>
+                            {% if file.parsedAt %}
+                                {{ file.parsedAt|workspace_datetime }}
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if apply_result %}
+                                {% if (apply_totals.skipped ?? 0) > 0 %}
+                                    <span class="badge text-bg-warning">Требует разбора</span>
+                                {% else %}
+                                    <span class="badge text-bg-success">Применен</span>
+                                {% endif %}
+                                <div class="small text-secondary mt-1">
+                                    Создано: {{ apply_totals.created ?? 0 }},
+                                    переисп.: {{ apply_totals.reused ?? 0 }},
+                                    пропущено: {{ apply_totals.skipped ?? 0 }}
+                                </div>
+                            {% elseif preview_blockers %}
+                                <span class="badge text-bg-danger">Блокер предпросмотра</span>
+                                <div class="small text-secondary mt-1">
+                                    {{ preview_blockers|slice(0, 2)|join('; ') }}
+                                    {% if preview_blockers|length > 2 %}
+                                        <span>Еще: {{ preview_blockers|length - 2 }}.</span>
+                                    {% endif %}
+                                </div>
+                            {% elseif file.status.value == 'parsed' %}
+                                <span class="badge text-bg-primary">Готов к применению</span>
+                            {% elseif file.status.value == 'failed' %}
+                                <span class="badge text-bg-danger">Ошибка разбора</span>
+                            {% elseif file.status.value == 'applied' %}
+                                <span class="badge text-bg-secondary">Нет отчета</span>
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="d-inline-flex gap-2">
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_zavety_michurina_statement_import_file_show', {uuid: file.uuid}) }}">Открыть</a>
+                                {% if file.canBeDeleted %}
+                                    <form method="post" action="{{ path('app_admin_zavety_michurina_statement_import_file_delete', {uuid: file.uuid}) }}" onsubmit="return confirm('Удалить этот файл из staging-импорта?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_zm_statement_import_file' ~ file.uuid) }}">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Удалить</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary py-5">
+                            {% if filters.status != 'all' or filters.readiness != 'all' %}
+                                Файлы не найдены по заданным фильтрам.
+                            {% else %}
+                                В этой пачке пока нет файлов.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination, route_parameters: {uuid: batch.uuid}}) }}
+    </section>
+{% endblock %}

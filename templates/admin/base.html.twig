@@ -1,0 +1,164 @@
+{% extends 'base.html.twig' %}
+
+{% set current_workspace = workspace_context.currentWorkspace %}
+{% set available_workspaces = workspace_context.availableWorkspaces %}
+{% set current_route = app.request.attributes.get('_route') %}
+{% set admin_menu = [
+    {
+        label: 'Основное',
+        items: [
+            { label: 'Рабочий стол', route: 'app_admin' }
+        ]
+    },
+    {
+        label: 'Справочники',
+        items: [
+            { label: 'Абоненты', route: 'app_admin_subscriber_index' },
+            { label: 'Участки', route: 'app_admin_account_index' },
+            { label: 'Группы участков', route: 'app_admin_account_group_index' }
+        ]
+    },
+    {
+        label: 'Электроэнергия',
+        items: [
+            { label: 'Электросчетчики', route: 'app_admin_electricity_meter_index' },
+            { label: 'Показания', route: 'app_admin_electricity_meter_reading_index' },
+            { label: 'Тарифные профили', route: 'app_admin_electricity_tariff_profile_index', active_prefix: 'app_admin_electricity_tariff_period' },
+            { label: 'Тарифные зоны', route: 'app_admin_electricity_tariff_zone_index' },
+            { label: 'Диапазоны потребления', route: 'app_admin_electricity_consumption_band_index' },
+            { label: 'Правила диапазонов', route: 'app_admin_electricity_consumption_band_rule_index' }
+        ]
+    },
+    {
+        label: 'Финансы',
+        items: [
+            { label: 'Расчеты', route: 'app_admin_billing_run_index' },
+            { label: 'Проблемы расчетов', route: 'app_admin_billing_run_issue_index' },
+            { label: 'Начисления', route: 'app_admin_accrual_index' },
+            { label: 'Оплаты', route: 'app_admin_payment_index' },
+            { label: 'Платежные реквизиты', route: 'app_admin_payment_requisite_profile_index' },
+            { label: 'Баланс участков', route: 'app_admin_account_balance_index' },
+            { label: 'Квитанции', route: 'app_admin_account_statement_index' },
+            { label: 'Доставка квитанций', route: 'app_admin_account_statement_delivery_index' }
+        ]
+    },
+    {
+        label: 'Импорт',
+        items: [
+            { label: 'PDF-квитанции ЗМ', route: 'app_admin_zavety_michurina_statement_import_index' }
+        ]
+    },
+    {
+        label: 'Система',
+        items: [
+            { label: 'Пользователи', route: 'app_admin_user_index' },
+            { label: 'Хозяйства', route: 'app_admin_workspace_index', required_grant: 'ROLE_ADMIN' },
+            { label: 'Настройки расчетов', route: 'app_admin_billing_settings' },
+            { label: 'Аудит', route: 'app_admin_audit_log_index', required_grant: 'WORKSPACE_ADMIN' }
+        ]
+    }
+] %}
+
+{% block body %}
+    <div class="admin-shell">
+        <aside class="admin-sidebar p-3" data-admin-sidebar-scroll>
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <a class="fs-5 fw-semibold text-white text-decoration-none" href="{{ path('app_admin') }}">КомУчёт</a>
+            </div>
+
+            <nav class="d-grid gap-4" aria-label="Администрирование">
+                {% for group in admin_menu %}
+                    <div>
+                        <div class="admin-sidebar-heading mb-2">{{ group.label }}</div>
+
+                        {% if group.route is defined %}
+                            <a class="nav-link {{ current_route == group.route ? 'active' }}" href="{{ path(group.route) }}">Обзор</a>
+                        {% endif %}
+
+                        {% if group.items is not empty %}
+                            <div class="nav nav-pills flex-column gap-1">
+                                {% for item in group.items %}
+                                    {% if item.required_grant is not defined or is_granted(item.required_grant) %}
+                                        {% if item.route is defined %}
+                                            {% set item_active = current_route starts with item.route|replace({'_index': ''}) or (item.active_prefix is defined and current_route starts with item.active_prefix) %}
+                                            <a class="nav-link {{ item_active ? 'active' }}" href="{{ path(item.route) }}">{{ item.label }}</a>
+                                        {% else %}
+                                            <span class="nav-link disabled opacity-75" aria-disabled="true">{{ item.label }}</span>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </nav>
+        </aside>
+
+        <div class="admin-main">
+            <header class="admin-topbar bg-white border-bottom px-4 py-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    {% if available_workspaces|length > 1 %}
+                        <form method="post" action="{{ path('app_admin_workspace_switch') }}" class="d-flex align-items-end gap-2">
+                            <input type="hidden" name="_token" value="{{ csrf_token('switch_workspace') }}">
+
+                            <div>
+                                <label for="admin-current-workspace" class="small text-secondary">Текущее хозяйство</label>
+                                <select
+                                    id="admin-current-workspace"
+                                    class="form-select form-select-sm"
+                                    name="workspace_uuid"
+                                    aria-label="Текущее хозяйство"
+                                >
+                                    {% for workspace in available_workspaces %}
+                                        <option value="{{ workspace.uuid.toRfc4122() }}" {{ current_workspace and workspace.uuid.toRfc4122() == current_workspace.uuid.toRfc4122() ? 'selected' }}>
+                                            {{ workspace.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button class="btn btn-outline-secondary btn-sm" type="submit">
+                                Сменить
+                            </button>
+                        </form>
+                    {% else %}
+                        <div data-current-workspace-summary>
+                            <div class="small text-secondary">Текущее хозяйство</div>
+                            <div class="fw-semibold">{{ current_workspace ? current_workspace.name : 'Хозяйство не создано' }}</div>
+                        </div>
+                    {% endif %}
+
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="text-end">
+                            <div class="fw-semibold">{{ app.user.primaryEmail ?? 'Пользователь без email' }}</div>
+                            <div class="small text-secondary">
+                                {% if is_granted('ROLE_ADMIN') %}
+                                    Глобальный администратор
+                                {% elseif is_granted('WORKSPACE_ADMIN') %}
+                                    Администратор хозяйства
+                                {% else %}
+                                    Оператор хозяйства
+                                {% endif %}
+                            </div>
+                        </div>
+                        <a class="btn btn-outline-secondary btn-sm" href="{{ path('app_profile') }}">Профиль</a>
+                        <a class="btn btn-outline-secondary btn-sm" href="{{ logout_path() }}">Выйти</a>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-4">
+                {% for type, messages in app.flashes %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ type }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+
+                {% block admin_body %}{% endblock %}
+            </main>
+        </div>
+    </div>
+{% endblock %}

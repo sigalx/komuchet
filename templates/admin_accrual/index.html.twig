@@ -1,0 +1,121 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Начисления{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Начисления</h1>
+            <p class="text-secondary mb-0">Последние 300 проведенных, отмененных и замененных начислений по текущему хозяйству.</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_index') }}">К участкам</a>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_accrual_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="accrual-search-filter" class="form-label">Поиск</label>
+                    <input id="accrual-search-filter" class="form-control" type="search" name="q" value="{{ filters.q }}" placeholder="Участок, сумма или комментарий">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="accrual-type-filter" class="form-label">Тип</label>
+                    <select id="accrual-type-filter" class="form-select" name="type">
+                        <option value="" {{ filters.type == '' ? 'selected' }}>Все типы</option>
+                        {% for accrual_type in accrual_types %}
+                            <option value="{{ accrual_type.value }}" {{ filters.type == accrual_type.value ? 'selected' }}>{{ accrual_type.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="accrual-status-filter" class="form-label">Статус</label>
+                    <select id="accrual-status-filter" class="form-select" name="status">
+                        <option value="all" {{ filters.status == 'all' ? 'selected' }}>Все начисления</option>
+                        <option value="draft" {{ filters.status == 'draft' ? 'selected' }}>Черновики</option>
+                        <option value="posted" {{ filters.status == 'posted' ? 'selected' }}>Проведенные</option>
+                        <option value="cancelled" {{ filters.status == 'cancelled' ? 'selected' }}>Отмененные</option>
+                        <option value="superseded" {{ filters.status == 'superseded' ? 'selected' }}>Замененные</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="accrual-period-start-from-filter" class="form-label">Начало с</label>
+                    <input id="accrual-period-start-from-filter" class="form-control js-date-picker" type="text" name="period_start_from" value="{{ filters.period_start_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="accrual-period-start-to-filter" class="form-label">Начало по</label>
+                    <input id="accrual-period-start-to-filter" class="form-control js-date-picker" type="text" name="period_start_to" value="{{ filters.period_start_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_accrual_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'period_start', label: 'Период', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'account_number', label: 'Участок', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'type', label: 'Тип', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'amount', label: 'Сумма', sort: sort}) }}</th>
+                        <th>Статус</th>
+                        <th>Комментарий</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for accrual in accruals %}
+                    <tr>
+                        <td>{{ accrual.periodStart|date('d.m.Y') }} - {{ accrual.periodEnd|date('d.m.Y') }}</td>
+                        <td>
+                            <a href="{{ path('app_admin_account_show', {'uuid': accrual.account.uuid}) }}">{{ accrual.account.number }}</a>
+                        </td>
+                        <td>{{ accrual.type.label }}</td>
+                        <td>{{ accrual.amount|number_format(2, ',', ' ') }} руб.</td>
+                        <td>
+                            {% if accrual.cancelledAt %}
+                                <span class="badge text-bg-danger">Отменено</span>
+                            {% elseif accrual.replacingAccrual %}
+                                <span class="badge text-bg-secondary">Заменено</span>
+                            {% elseif accrual.postedAt %}
+                                <span class="badge text-bg-success">Проведено</span>
+                            {% else %}
+                                <span class="badge text-bg-light border">Черновик</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-secondary">{{ accrual.notes ?: '—' }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_accrual_show', {'uuid': accrual.uuid}) }}">Открыть</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-secondary py-5">
+                            {% if filters.q or filters.type or filters.status != 'all' or filters.period_start_from or filters.period_start_to %}
+                                Начисления не найдены.
+                            {% else %}
+                                Начисления пока не внесены.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

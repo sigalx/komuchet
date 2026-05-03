@@ -1,0 +1,145 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Пользователи{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Пользователи</h1>
+            <p class="text-secondary mb-0">Учетные записи входа, состояние доступа и связь с абонентами.</p>
+        </div>
+        {% if can_manage_identity %}
+            <a class="btn btn-primary" href="{{ path('app_admin_user_new') }}">Создать пользователя</a>
+        {% endif %}
+    </div>
+
+    {% if workspace_access_grant_form %}
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Выдать доступ к хозяйству</h2>
+                {{ form_start(workspace_access_grant_form) }}
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-lg-5">{{ form_row(workspace_access_grant_form.email) }}</div>
+                        <div class="col-12 col-lg-4">{{ form_row(workspace_access_grant_form.roleCode) }}</div>
+                        <div class="col-12 col-lg-3">
+                            <button class="btn btn-primary w-100">Выдать доступ</button>
+                        </div>
+                    </div>
+                {{ form_end(workspace_access_grant_form) }}
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_user_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                <div class="col-12 col-lg-3">
+                    <label for="user-email-filter" class="form-label">Email</label>
+                    <input id="user-email-filter" class="form-control" type="search" name="email" value="{{ filters.email }}" placeholder="user@example.test">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="user-admin-filter" class="form-label">Глобальный админ</label>
+                    <select id="user-admin-filter" class="form-select" name="admin">
+                        <option value="">Любой</option>
+                        <option value="yes" {{ filters.admin == 'yes' ? 'selected' }}>Да</option>
+                        <option value="no" {{ filters.admin == 'no' ? 'selected' }}>Нет</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-2">
+                    <label for="user-status-filter" class="form-label">Состояние</label>
+                    <select id="user-status-filter" class="form-select" name="status">
+                        <option value="">Не удаленные</option>
+                        {% for status_code, status_label in status_filters %}
+                            <option value="{{ status_code }}" {{ filters.status == status_code ? 'selected' }}>{{ status_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-2">
+                    <label for="user-linked-filter" class="form-label">Абонент</label>
+                    <select id="user-linked-filter" class="form-select" name="linked">
+                        <option value="">Любой</option>
+                        <option value="yes" {{ filters.linked == 'yes' ? 'selected' }}>Связан</option>
+                        <option value="no" {{ filters.linked == 'no' ? 'selected' }}>Не связан</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-2">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_user_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'email', label: 'Email', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'status', label: 'Состояние', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'admin', label: 'Глобальный админ', sort: sort}) }}</th>
+                        <th>Роли хозяйства</th>
+                        <th>Абонент</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'created_at', label: 'Создан', sort: sort}) }}</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for user in users %}
+                    {% set user_uuid = user.uuid.toRfc4122() %}
+                    {% set subscriber = subscribers_by_user[user_uuid] ?? null %}
+                    {% set workspace_roles = workspace_roles_by_user[user_uuid] ?? [] %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('app_admin_user_show', {'uuid': user.uuid}) }}">{{ user.primaryEmail ?: 'Пользователь без email' }}</a>
+                        </td>
+                        <td>
+                            {% set status_class = user.statusCode == 'active' ? 'text-bg-success' : (user.statusCode == 'blocked' ? 'text-bg-warning' : (user.statusCode == 'deleted' ? 'text-bg-danger' : 'text-bg-secondary')) %}
+                            <span class="badge {{ status_class }}">{{ user.statusLabel }}</span>
+                        </td>
+                        <td>
+                            {% if user.admin %}
+                                <span class="badge text-bg-danger">Да</span>
+                            {% else %}
+                                <span class="text-secondary">Нет</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for assignment in workspace_roles %}
+                                <span class="badge text-bg-light border">{{ assignment.roleCodeEnum.label }}</span>
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% if subscriber %}
+                                <a href="{{ path('app_admin_subscriber_show', {'uuid': subscriber.uuid}) }}">{{ subscriber.displayName }}</a>
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.createdAt|workspace_datetime }}</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_user_show', {'uuid': user.uuid}) }}">Открыть</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-secondary py-5">Пользователи не найдены.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

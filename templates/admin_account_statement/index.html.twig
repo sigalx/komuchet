@@ -1,0 +1,174 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Квитанции{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Квитанции</h1>
+            <p class="text-secondary mb-0">Сохраненные квитанции текущего хозяйства.</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_billing_run_index') }}">К расчетам</a>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_account_statement_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-search-filter" class="form-label">Поиск</label>
+                    <input id="statement-search-filter" class="form-control" type="search" name="q" value="{{ filters.q }}" placeholder="Участок или номер">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-billing-run-filter" class="form-label">Расчет</label>
+                    <select id="statement-billing-run-filter" class="form-select" name="billing_run">
+                        <option value="" {{ filters.billing_run == '' ? 'selected' }}>Все расчеты</option>
+                        <option value="{{ billing_run_filter_none }}" {{ filters.billing_run == billing_run_filter_none ? 'selected' }}>Без расчета</option>
+                        {% for billing_run in billing_runs %}
+                            <option value="{{ billing_run.uuid }}" {{ filters.billing_run == billing_run.uuid|lower ? 'selected' }}>
+                                {{ billing_run.periodStart|date('d.m.Y') }} - {{ billing_run.periodEnd|date('d.m.Y') }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-status-filter" class="form-label">Статус</label>
+                    <select id="statement-status-filter" class="form-select" name="status">
+                        {% for value, label in status_filter_choices %}
+                            <option value="{{ value }}" {{ filters.status == value ? 'selected' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-delivery-filter" class="form-label">Доставка</label>
+                    <select id="statement-delivery-filter" class="form-select" name="delivery">
+                        {% for value, label in delivery_filter_choices %}
+                            <option value="{{ value }}" {{ filters.delivery == value ? 'selected' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-generated-from-filter" class="form-label">Создана с</label>
+                    <input id="statement-generated-from-filter" class="form-control js-date-picker" type="text" name="generated_at_from" value="{{ filters.generated_at_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-generated-to-filter" class="form-label">Создана по</label>
+                    <input id="statement-generated-to-filter" class="form-control js-date-picker" type="text" name="generated_at_to" value="{{ filters.generated_at_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-amount-from-filter" class="form-label">К оплате от</label>
+                    <input id="statement-amount-from-filter" class="form-control" type="text" name="amount_to_pay_from" value="{{ filters.amount_to_pay_from }}" placeholder="0,00" inputmode="decimal">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="statement-amount-to-filter" class="form-label">К оплате до</label>
+                    <input id="statement-amount-to-filter" class="form-control" type="text" name="amount_to_pay_to" value="{{ filters.amount_to_pay_to }}" placeholder="0,00" inputmode="decimal">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'generated_at', label: 'Создана', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'account_number', label: 'Участок', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'number', label: 'Квитанция', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'billing_run_period', label: 'Расчет', sort: sort}) }}</th>
+                        <th class="text-end">{{ include('admin/_sort_link.html.twig', {field: 'amount_to_pay', label: 'К оплате', sort: sort}) }}</th>
+                        <th>Статус</th>
+                        <th>Доставка</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for statement in statements %}
+                    {% set deliveries = deliveries_by_statement[statement.uuid|lower] ?? [] %}
+                    <tr>
+                        <td>{{ statement.generatedAt|workspace_datetime }}</td>
+                        <td>
+                            {% if statement.account %}
+                                <a href="{{ path('app_admin_account_show', {uuid: statement.account.uuid}) }}">{{ statement.accountNumber }}</a>
+                            {% else %}
+                                {{ statement.accountNumber }}
+                            {% endif %}
+                        </td>
+                        <td>{{ statement.number }}</td>
+                        <td>
+                            {% if statement.billingRun %}
+                                <a href="{{ path('app_admin_billing_run_show', {uuid: statement.billingRun.uuid}) }}">
+                                    {{ statement.billingRun.periodStart|date('d.m.Y') }} - {{ statement.billingRun.periodEnd|date('d.m.Y') }}
+                                </a>
+                            {% else %}
+                                <span class="text-secondary">Без расчета</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-semibold">{{ statement.amountToPay|number_format(2, ',', ' ') }} руб.</td>
+                        <td>
+                            {% if statement.cancelled %}
+                                <span class="badge text-bg-warning">Отменена</span>
+                                {% if statement.cancellationReason %}
+                                    <div class="small text-secondary mt-1">{{ statement.cancellationReason }}</div>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge text-bg-success">Активна</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if deliveries %}
+                                <span class="badge text-bg-light border">{{ deliveries|length }}</span>
+                                <div class="small text-secondary mt-1">
+                                    {% for delivery in deliveries|slice(0, 2) %}
+                                        <div>{{ delivery.recipientEmail }} — {{ delivery.statusLabel }}</div>
+                                    {% endfor %}
+                                    {% if deliveries|length > 2 %}
+                                        <div>Еще: {{ deliveries|length - 2 }}</div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="badge text-bg-secondary">Нет</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if statement.account %}
+                                <div class="btn-group btn-group-sm">
+                                    <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_snapshot_show', {uuid: statement.account.uuid, statementUuid: statement.uuid}) }}">Открыть</a>
+                                    <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_snapshot_pdf', {uuid: statement.account.uuid, statementUuid: statement.uuid}) }}">PDF</a>
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary py-5">
+                            {% if filters.q or filters.billing_run or filters.status != 'all' or filters.delivery != 'all' or filters.generated_at_from or filters.generated_at_to or filters.amount_to_pay_from or filters.amount_to_pay_to %}
+                                Квитанции не найдены.
+                            {% else %}
+                                Квитанции пока не сформированы.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

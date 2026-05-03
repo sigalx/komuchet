@@ -1,0 +1,33 @@
+{{ form_start(form) }}
+    <div class="row g-3">
+        <div class="col-md-6">
+            {{ form_row(form.tariffProfile) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.month) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.priority) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.validFrom) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.validTo) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.allocationMethod) }}
+        </div>
+        <div class="col-12">
+            {{ form_row(form.sourceDocument) }}
+        </div>
+        <div class="col-12">
+            {{ form_row(form.notes) }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_consumption_band_rule_index') }}">Отмена</a>
+    </div>
+{{ form_end(form) }}

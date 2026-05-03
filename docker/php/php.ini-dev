@@ -1,0 +1,6 @@
+display_errors = On
+error_reporting = E_ALL
+
+opcache.enable_cli = 1
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 0

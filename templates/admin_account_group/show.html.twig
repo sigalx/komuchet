@@ -1,0 +1,103 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Группа {{ account_group.name }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Группа {{ account_group.name }}</h1>
+            <p class="text-secondary mb-0">{{ account_group.description ?: 'Без описания' }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_group_index') }}">К списку</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_account_group_edit', {'uuid': account_group.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Код</dt>
+                <dd class="col-sm-9"><code>{{ account_group.code }}</code></dd>
+
+                <dt class="col-sm-3">Название</dt>
+                <dd class="col-sm-9">{{ account_group.name }}</dd>
+
+                <dt class="col-sm-3">Описание</dt>
+                <dd class="col-sm-9">{{ account_group.description ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Создана</dt>
+                <dd class="col-sm-9">{{ account_group.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлена</dt>
+                <dd class="col-sm-9">{{ account_group.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Участки в группе</h2>
+                    <p class="text-secondary mb-0">Активные членства участков в этой группе.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Участок</th>
+                            <th>Действует с</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for member in active_members %}
+                        <tr>
+                            <td>
+                                <a class="fw-semibold" href="{{ path('app_admin_account_show', {'uuid': member.account.uuid}) }}">{{ member.account.number }}</a>
+                            </td>
+                            <td>{{ member.validFrom|date('d.m.Y') }}</td>
+                            <td class="text-end">
+                                <form method="post" action="{{ path('app_admin_account_group_member_close', {'uuid': account_group.uuid, 'accountUuid': member.account.uuid}) }}" onsubmit="return confirm('Исключить участок {{ member.account.number|e('js') }} из группы?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('close_member' ~ account_group.uuid ~ member.account.uuid) }}">
+                                    <button class="btn btn-outline-danger btn-sm">Исключить</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-secondary py-4">В группе пока нет участков.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Добавить участок</h2>
+
+            {% if member_add_form.account.vars.choices|length > 0 %}
+                {{ form_start(member_add_form) }}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form_row(member_add_form.account) }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form_row(member_add_form.validFrom) }}
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary">Добавить участок</button>
+                {{ form_end(member_add_form) }}
+            {% else %}
+                <p class="text-secondary mb-0">Нет активных участков, которые можно добавить в эту группу.</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

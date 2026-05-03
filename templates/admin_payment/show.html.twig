@@ -1,0 +1,85 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Оплата{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Оплата</h1>
+            <p class="text-secondary mb-0">Участок {{ payment.account.number }}, {{ payment.amount|number_format(2, ',', ' ') }} руб.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_show', {'uuid': payment.account.uuid}) }}">К участку</a>
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_payment_index') }}">К списку</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Участок</dt>
+                <dd class="col-sm-9">
+                    <a href="{{ path('app_admin_account_show', {'uuid': payment.account.uuid}) }}">{{ payment.account.number }}</a>
+                </dd>
+
+                <dt class="col-sm-3">Сумма</dt>
+                <dd class="col-sm-9">{{ payment.amount|number_format(2, ',', ' ') }} руб.</dd>
+
+                <dt class="col-sm-3">Дата оплаты</dt>
+                <dd class="col-sm-9">{{ payment.paidOn|date('d.m.Y') }}</dd>
+
+                <dt class="col-sm-3">Источник</dt>
+                <dd class="col-sm-9">
+                    {% if payment.source.value == 'import' %}
+                        Импорт
+                    {% else %}
+                        Ручной ввод
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Статус</dt>
+                <dd class="col-sm-9">
+                    {% if payment.cancelledAt %}
+                        <span class="badge text-bg-danger">Отменено</span>
+                    {% elseif payment.replacingPayment %}
+                        <span class="badge text-bg-secondary">Заменено</span>
+                    {% else %}
+                        <span class="badge text-bg-success">Активно</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Плательщик</dt>
+                <dd class="col-sm-9">{{ payment.payerName ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Назначение</dt>
+                <dd class="col-sm-9">{{ payment.purpose ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Идентификатор операции</dt>
+                <dd class="col-sm-9">{{ payment.externalReference ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Создана</dt>
+                <dd class="col-sm-9">{{ payment.createdAt|workspace_datetime }}</dd>
+
+                {% if payment.cancelledAt %}
+                    <dt class="col-sm-3">Отменена</dt>
+                    <dd class="col-sm-9">{{ payment.cancelledAt|workspace_datetime }}</dd>
+
+                    <dt class="col-sm-3">Причина отмены</dt>
+                    <dd class="col-sm-9">{{ payment.cancellationReason ?: '—' }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+    </section>
+
+    {% if payment.active %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Отменить оплату</h2>
+                {{ form_start(cancel_form) }}
+                    {{ form_row(cancel_form.reason) }}
+                    <button class="btn btn-outline-danger">Отменить</button>
+                {{ form_end(cancel_form) }}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

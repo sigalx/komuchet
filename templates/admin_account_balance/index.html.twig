@@ -1,0 +1,98 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Баланс участков{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Баланс участков</h1>
+            <p class="text-secondary mb-0">Сводка активных posted-начислений и активных оплат по участкам.</p>
+        </div>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_account_balance_index') }}" class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label for="account-balance-state" class="form-label">Баланс</label>
+                    <select id="account-balance-state" class="form-select" name="state">
+                        {% for value, label in state_filters %}
+                            <option value="{{ value }}" {{ filters.state == value ? 'selected' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label for="account-balance-sort" class="form-label">Сортировка</label>
+                    <select id="account-balance-sort" class="form-select" name="sort">
+                        {% for value, label in sorts %}
+                            <option value="{{ value }}" {{ filters.sort == value ? 'selected' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_balance_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Участок</th>
+                        <th class="text-end">Начислено</th>
+                        <th class="text-end">Оплачено</th>
+                        <th class="text-end">Долг</th>
+                        <th class="text-end">Переплата</th>
+                        <th>Состояние</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in balance_rows %}
+                    <tr>
+                        <td>
+                            <a class="fw-semibold" href="{{ path('app_admin_account_show', {'uuid': row.accountUuid}) }}">{{ row.accountNumber }}</a>
+                            {% if row.accountNotes %}
+                                <div class="small text-secondary">{{ row.accountNotes }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ row.activeAccrualTotal|number_format(2, ',', ' ') }} руб.</td>
+                        <td class="text-end">{{ row.activePaymentTotal|number_format(2, ',', ' ') }} руб.</td>
+                        <td class="text-end fw-semibold {{ row.state == 'debt' ? 'text-danger' : 'text-secondary' }}">
+                            {{ row.debtAmount|number_format(2, ',', ' ') }} руб.
+                        </td>
+                        <td class="text-end fw-semibold {{ row.state == 'overpayment' ? 'text-info' : 'text-secondary' }}">
+                            {{ row.overpaymentAmount|number_format(2, ',', ' ') }} руб.
+                        </td>
+                        <td>
+                            {% if row.state == 'debt' %}
+                                <span class="badge text-bg-warning">К оплате</span>
+                            {% elseif row.state == 'overpayment' %}
+                                <span class="badge text-bg-info">Переплата</span>
+                            {% else %}
+                                <span class="badge text-bg-success">Закрыто</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_account_show', {'uuid': row.accountUuid}) }}">Открыть</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-secondary py-5">Участки не найдены.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новый Тарифный Профиль{% endblock %}
+
+{% block admin_body %}
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Новый тарифный профиль</h1>
+        <p class="text-secondary mb-0">Например: snt, urban, rural, electric_heating.</p>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_electricity_tariff_profile/_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{{ form_start(form) }}
+    <div class="row g-3">
+        <div class="col-md-3">
+            {{ form_row(form.amount) }}
+        </div>
+        <div class="col-md-3">
+            {{ form_row(form.paidOn) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.payerName) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.purpose) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.externalReference) }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_show', {'uuid': account.uuid}) }}">Отмена</a>
+    </div>
+{{ form_end(form) }}

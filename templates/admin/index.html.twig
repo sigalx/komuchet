@@ -1,0 +1,274 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Рабочий стол{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Рабочий стол</h1>
+            <p class="text-secondary mb-0">{{ current_workspace ? current_workspace.name : 'Хозяйство не создано' }}</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_billing_run_new') }}">Создать расчет</a>
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_balance_index') }}">Баланс участков</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_billing_run_issue_index') }}">Проблемы расчетов</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between gap-3">
+                        <div>
+                            <h2 class="h6 text-secondary mb-2">Проблемы расчетов</h2>
+                            <div class="display-6 fw-semibold">{{ open_issue_count }}</div>
+                        </div>
+                        {% if open_issue_count > 0 %}
+                            <span class="badge text-bg-warning">Требуют внимания</span>
+                        {% else %}
+                            <span class="badge text-bg-success">Нет открытых</span>
+                        {% endif %}
+                    </div>
+                    <a class="btn btn-sm btn-outline-secondary mt-3" href="{{ path('app_admin_billing_run_issue_index') }}">Открыть список</a>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6 text-secondary mb-2">Формирование квитанций</h2>
+                    {% if invoice_schedule and billing_settings %}
+                        <div class="d-flex align-items-baseline gap-2">
+                            <div class="display-6 fw-semibold">{{ invoice_schedule.target_date|date('d.m') }}</div>
+                            <div class="text-secondary">{{ invoice_schedule.target_date|date('Y') }}</div>
+                        </div>
+                        {% if invoice_schedule.state == 'today' %}
+                            <div class="badge text-bg-warning mt-2">Сегодня</div>
+                        {% elseif invoice_schedule.state == 'soon' %}
+                            <div class="badge text-bg-info mt-2">Через {{ invoice_schedule.days_until }} дн.</div>
+                        {% else %}
+                            <div class="text-secondary mt-2">Через {{ invoice_schedule.days_until }} дн.</div>
+                        {% endif %}
+                        <div class="small text-secondary mt-2">
+                            День месяца: {{ billing_settings.invoiceGenerationDay }},
+                            актуальность показаний: {{ billing_settings.readingFreshnessWindowDays }} дн.
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-3">Настройки расчетов не найдены.</p>
+                    {% endif %}
+                    <a class="btn btn-sm btn-outline-secondary mt-3" href="{{ path('app_admin_billing_settings') }}">Настройки</a>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-start justify-content-between gap-3">
+                        <div>
+                            <h2 class="h6 text-secondary mb-2">Доставка квитанций</h2>
+                            <div class="display-6 fw-semibold">{{ delivery_summary.queued }}</div>
+                        </div>
+                        {% if delivery_summary.failed > 0 %}
+                            <span class="badge text-bg-danger">Есть ошибки</span>
+                        {% elseif delivery_summary.queued > 0 or delivery_summary.sending > 0 %}
+                            <span class="badge text-bg-warning">В работе</span>
+                        {% else %}
+                            <span class="badge text-bg-success">Очередь пуста</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-secondary mt-2">
+                        В очереди: {{ delivery_summary.queued }},
+                        отправляется: {{ delivery_summary.sending }},
+                        ошибки: {{ delivery_summary.failed }}
+                    </div>
+                    <a class="btn btn-sm btn-outline-secondary mt-3" href="{{ path('app_admin_account_statement_delivery_index') }}">Открыть очередь</a>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h6 text-secondary mb-2">Участки с долгом</h2>
+                    {% if debtor_rows|length > 0 %}
+                        <div class="display-6 fw-semibold">{{ debtor_rows|length }}</div>
+                        <div class="text-secondary mt-2">Показаны первые по сумме долга.</div>
+                    {% else %}
+                        <div class="display-6 fw-semibold">0</div>
+                        <div class="text-secondary mt-2">Долгов по активным участкам нет.</div>
+                    {% endif %}
+                    <a class="btn btn-sm btn-outline-secondary mt-3" href="{{ path('app_admin_account_balance_index', {state: 'debt', sort: 'debt_desc'}) }}">Открыть должников</a>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Открытые проблемы</h2>
+                            <p class="text-secondary mb-0">Последние обновленные проблемы расчетов.</p>
+                        </div>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_billing_run_issue_index') }}">Все</a>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Участок</th>
+                                    <th>Тип</th>
+                                    <th>Расчет</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for issue in open_issues %}
+                                <tr>
+                                    <td><a href="{{ path('app_admin_account_show', {'uuid': issue.account.uuid}) }}">{{ issue.account.number }}</a></td>
+                                    <td>{{ issue.issueType.label }}</td>
+                                    <td>
+                                        <a href="{{ path('app_admin_billing_run_show', {'uuid': issue.billingRun.uuid}) }}">
+                                            {{ issue.billingRun.periodStart|date('d.m.Y') }} - {{ issue.billingRun.periodEnd|date('d.m.Y') }}
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-secondary py-4">Открытых проблем нет.</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Должники</h2>
+                            <p class="text-secondary mb-0">Участки с самым большим текущим долгом.</p>
+                        </div>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_account_balance_index', {state: 'debt', sort: 'debt_desc'}) }}">Все</a>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Участок</th>
+                                    <th class="text-end">Долг</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row in debtor_rows %}
+                                <tr>
+                                    <td><a href="{{ path('app_admin_account_show', {'uuid': row.accountUuid}) }}">{{ row.accountNumber }}</a></td>
+                                    <td class="text-end fw-semibold">{{ row.debtAmount|number_format(2, ',', ' ') }} руб.</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="2" class="text-center text-secondary py-4">Должников нет.</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Последние оплаты</h2>
+                            <p class="text-secondary mb-0">Недавние платежи текущего хозяйства.</p>
+                        </div>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_payment_index') }}">Все</a>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Участок</th>
+                                    <th class="text-end">Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for payment in latest_payments %}
+                                <tr>
+                                    <td>{{ payment.paidOn|date('d.m.Y') }}</td>
+                                    <td><a href="{{ path('app_admin_account_show', {'uuid': payment.account.uuid}) }}">{{ payment.account.number }}</a></td>
+                                    <td class="text-end">
+                                        <a href="{{ path('app_admin_payment_show', {'uuid': payment.uuid}) }}">{{ payment.amount|number_format(2, ',', ' ') }} руб.</a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-secondary py-4">Оплаты пока не внесены.</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                        <div>
+                            <h2 class="h5 mb-1">Последние показания</h2>
+                            <p class="text-secondary mb-0">Недавние события передачи показаний.</p>
+                        </div>
+                        <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_electricity_meter_reading_index') }}">Все</a>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Участок</th>
+                                    <th class="text-end">Показание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for reading in latest_readings %}
+                                <tr>
+                                    <td>{{ reading.takenOn|date('d.m.Y') }}</td>
+                                    <td><a href="{{ path('app_admin_account_show', {'uuid': reading.electricityMeter.account.uuid}) }}">{{ reading.electricityMeter.account.number }}</a></td>
+                                    <td class="text-end">
+                                        <a href="{{ path('app_admin_electricity_meter_reading_show', {'uuid': reading.uuid}) }}">
+                                            {{ reading.readingValue|number_format(3, ',', ' ') }}
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-secondary py-4">Показания пока не внесены.</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}

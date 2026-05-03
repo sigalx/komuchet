@@ -1,0 +1,4 @@
+<form method="post" action="{{ path('app_admin_payment_requisite_profile_delete', {'uuid': payment_requisite_profile.uuid}) }}" onsubmit="return confirm('Удалить этот профиль реквизитов?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ payment_requisite_profile.uuid) }}">
+    <button class="btn btn-outline-danger">Удалить</button>
+</form>

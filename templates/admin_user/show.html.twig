@@ -1,0 +1,287 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Пользователь {{ user.primaryEmail ?: 'без email' }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Пользователь {{ user.primaryEmail ?: 'без email' }}</h1>
+            <p class="text-secondary mb-0">Учетная запись входа и состояние доступа.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_user_index') }}">К списку</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Состояние</dt>
+                <dd class="col-sm-9">
+                    {% set status_class = user.statusCode == 'active' ? 'text-bg-success' : (user.statusCode == 'blocked' ? 'text-bg-warning' : (user.statusCode == 'deleted' ? 'text-bg-danger' : 'text-bg-secondary')) %}
+                    <span class="badge {{ status_class }}">{{ user.statusLabel }}</span>
+                </dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ user.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлен</dt>
+                <dd class="col-sm-9">{{ user.updatedAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Одобрен</dt>
+                <dd class="col-sm-9">{{ user.approvedAt ? user.approvedAt|workspace_datetime : '—' }}</dd>
+
+                <dt class="col-sm-3">Глобальный админ</dt>
+                <dd class="col-sm-9">
+                    {% if user.admin %}
+                        <span class="badge text-bg-danger">Да</span>
+                        {% if user.adminGrantedAt %}
+                            <div class="small text-secondary">Выдано {{ user.adminGrantedAt|workspace_datetime }}</div>
+                        {% endif %}
+                    {% else %}
+                        Нет
+                        {% if user.adminRevokedAt %}
+                            <div class="small text-secondary">
+                                Отозвано {{ user.adminRevokedAt|workspace_datetime }}
+                                {% if user.adminRevokedReason %}: {{ user.adminRevokedReason }}{% endif %}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Заблокирован</dt>
+                <dd class="col-sm-9">
+                    {% if user.blockedAt %}
+                        {{ user.blockedAt|workspace_datetime }}
+                        {% if user.blockedReason %}
+                            <div class="small text-secondary">{{ user.blockedReason }}</div>
+                        {% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Удален</dt>
+                <dd class="col-sm-9">{{ user.deletedAt ? user.deletedAt|workspace_datetime : '—' }}</dd>
+
+                <dt class="col-sm-3">Абонент текущего хозяйства</dt>
+                <dd class="col-sm-9">
+                    {% if subscriber %}
+                        <a href="{{ path('app_admin_subscriber_show', {'uuid': subscriber.uuid}) }}">{{ subscriber.displayName }}</a>
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Пароль</dt>
+                <dd class="col-sm-9">
+                    {% if user.passwordCredential %}
+                        Установлен {{ user.passwordCredential.changedAt|workspace_datetime }}
+                        {% if user.passwordCredential.expiresAt %}
+                            <div class="small text-secondary">Истекает {{ user.passwordCredential.expiresAt|date('d.m.Y') }}</div>
+                        {% endif %}
+                    {% else %}
+                        —
+                    {% endif %}
+                </dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Абонент текущего хозяйства</h2>
+
+            {% if subscriber %}
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div>
+                        <div class="fw-semibold">
+                            <a href="{{ path('app_admin_subscriber_show', {'uuid': subscriber.uuid}) }}">{{ subscriber.displayName }}</a>
+                        </div>
+                        <div class="text-secondary small">Абонент, через которого пользователь получает доступ к участкам.</div>
+                    </div>
+                    {% if can_manage_identity %}
+                        <form method="post" action="{{ path('app_admin_user_subscriber_unlink', {'uuid': user.uuid}) }}" onsubmit="return confirm('Отвязать абонента {{ subscriber.displayName|e('js') }} от пользователя?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('unlink_user_subscriber' ~ user.uuid) }}">
+                            <button class="btn btn-outline-danger">Отвязать абонента</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% elseif can_manage_identity and subscriber_link_form %}
+                {% if subscriber_link_form.subscriber.vars.choices|length > 0 %}
+                    {{ form_start(subscriber_link_form) }}
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-8">{{ form_row(subscriber_link_form.subscriber) }}</div>
+                            <div class="col-md-4"><button class="btn btn-primary">Связать абонента</button></div>
+                        </div>
+                    {{ form_end(subscriber_link_form) }}
+                {% else %}
+                    <p class="text-secondary mb-0">Нет абонентов без связанного пользователя в текущем хозяйстве.</p>
+                {% endif %}
+            {% else %}
+                <p class="text-secondary mb-0">Связь с абонентом недоступна.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Роли текущего хозяйства</h2>
+
+            <div class="table-responsive mb-4">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Роль</th>
+                            <th>Выдана</th>
+                            <th>Отозвана</th>
+                            <th>Причина</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for assignment in workspace_role_assignments %}
+                        {% set assignment_uuid = assignment.uuid.toRfc4122() %}
+                        <tr>
+                            <td>{{ assignment.roleCodeEnum.label }}</td>
+                            <td>{{ assignment.grantedAt|workspace_datetime }}</td>
+                            <td>{{ assignment.revokedAt ? assignment.revokedAt|workspace_datetime : '—' }}</td>
+                            <td>{{ assignment.revokedReason ?: '—' }}</td>
+                            <td class="text-end">
+                                {% if assignment.active and workspace_role_revoke_forms[assignment_uuid] is defined and is_granted('WORKSPACE_ADMIN') %}
+                                    {% set revoke_form = workspace_role_revoke_forms[assignment_uuid] %}
+                                    {{ form_start(revoke_form, {attr: {class: 'd-grid gap-2 text-start'}}) }}
+                                        {{ form_row(revoke_form.reason, {label_attr: {class: 'small'}, attr: {class: 'form-control form-control-sm', rows: 2}}) }}
+                                        <button class="btn btn-outline-danger btn-sm">Отозвать роль хозяйства</button>
+                                    {{ form_end(revoke_form) }}
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Роли текущего хозяйства пока не назначены.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if not user.deletedAt and is_granted('WORKSPACE_ADMIN') %}
+                <h3 class="h6 mb-3">Назначить роль</h3>
+                {{ form_start(workspace_role_grant_form) }}
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">{{ form_row(workspace_role_grant_form.roleCode) }}</div>
+                        <div class="col-md-4"><button class="btn btn-primary">Назначить роль хозяйства</button></div>
+                    </div>
+                {{ form_end(workspace_role_grant_form) }}
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Email-адреса</h2>
+                    <p class="text-secondary mb-0">Активные и отвязанные адреса пользователя.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive mb-4">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Подтвержден</th>
+                            <th>Создан</th>
+                            <th>Отвязан</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for identity in user.emailIdentities %}
+                        <tr>
+                            <td>{{ identity.email }}</td>
+                            <td>{{ identity.verifiedAt ? identity.verifiedAt|workspace_datetime : '—' }}</td>
+                            <td>{{ identity.createdAt|workspace_datetime }}</td>
+                            <td>{{ identity.deletedAt ? identity.deletedAt|workspace_datetime : '—' }}</td>
+                            <td class="text-end">
+                                {% if can_manage_identity and identity.active %}
+                                    <form method="post" action="{{ path('app_admin_user_email_delete', {'uuid': user.uuid, 'emailNormalized': identity.emailNormalized}) }}" onsubmit="return confirm('Отвязать email {{ identity.email|e('js') }}?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_user_email' ~ user.uuid ~ identity.emailNormalized) }}">
+                                        <button class="btn btn-outline-danger btn-sm">Отвязать</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Email-адреса пока не добавлены.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if can_manage_identity and not user.deletedAt and email_add_form %}
+                <h3 class="h6 mb-3">Добавить email</h3>
+                {{ form_start(email_add_form) }}
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">{{ form_row(email_add_form.email) }}</div>
+                        <div class="col-md-4"><button class="btn btn-primary">Добавить email</button></div>
+                    </div>
+                {{ form_end(email_add_form) }}
+            {% endif %}
+        </div>
+    </section>
+
+    {% if can_manage_identity and not user.deletedAt %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Установить пароль</h2>
+                {{ form_start(password_set_form) }}
+                    <div class="row g-3">
+                        <div class="col-md-4">{{ form_row(password_set_form.plainPassword.first) }}</div>
+                        <div class="col-md-4">{{ form_row(password_set_form.plainPassword.second) }}</div>
+                        <div class="col-md-4">{{ form_row(password_set_form.expiresAt) }}</div>
+                    </div>
+                    <button class="btn btn-primary">Установить пароль</button>
+                {{ form_end(password_set_form) }}
+            </div>
+        </section>
+
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Действия доступа</h2>
+
+                {% if not user.approvedAt %}
+                    <form method="post" action="{{ path('app_admin_user_approve', {'uuid': user.uuid}) }}" class="mb-3">
+                        <input type="hidden" name="_token" value="{{ csrf_token('approve_user' ~ user.uuid) }}">
+                        <button class="btn btn-outline-success">Одобрить пользователя</button>
+                    </form>
+                {% endif %}
+
+                {% if user.blockedAt %}
+                    <form method="post" action="{{ path('app_admin_user_unblock', {'uuid': user.uuid}) }}" class="mb-3">
+                        <input type="hidden" name="_token" value="{{ csrf_token('unblock_user' ~ user.uuid) }}">
+                        <button class="btn btn-outline-success">Разблокировать</button>
+                    </form>
+                {% else %}
+                    {{ form_start(block_form, {attr: {class: 'mb-3'}}) }}
+                        {{ form_row(block_form.reason) }}
+                        <button class="btn btn-outline-warning">Заблокировать</button>
+                    {{ form_end(block_form) }}
+                {% endif %}
+
+                <form method="post" action="{{ path('app_admin_user_delete', {'uuid': user.uuid}) }}" onsubmit="return confirm('Удалить пользователя {{ (user.primaryEmail ?: 'без email')|e('js') }}?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete_user' ~ user.uuid) }}">
+                    <button class="btn btn-outline-danger">Удалить пользователя</button>
+                </form>
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

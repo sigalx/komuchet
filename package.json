@@ -1,0 +1,23 @@
+{
+  "name": "komuchet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "КомУчёт - система для автоматизации учета коммунальных начислений и оплат в хозяйствах: СНТ, ТСЖ и похожих объединениях.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test tests/e2e/demo-smoke.spec.js",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

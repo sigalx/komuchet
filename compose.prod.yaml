@@ -1,0 +1,59 @@
+# Production override.
+#
+# The production server must not build application images from source.
+# CI builds and pushes APP_IMAGE/NGINX_IMAGE, then the server pulls them.
+# Stateful services such as PostgreSQL, Redis and RabbitMQ are host services.
+
+x-php-prod-base: &php-prod-base
+  image: ${APP_IMAGE:-snt-php:latest}
+  environment:
+    APP_ENV: prod
+    APP_DEBUG: "0"
+    APP_SECRET: ${APP_SECRET:?APP_SECRET is required}
+    DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    DEFAULT_URI: ${DEFAULT_URI:?DEFAULT_URI is required}
+    SYMFONY_TRUSTED_HOSTS: ${SYMFONY_TRUSTED_HOSTS:?SYMFONY_TRUSTED_HOSTS is required}
+    SYMFONY_TRUSTED_PROXIES: ${SYMFONY_TRUSTED_PROXIES:?SYMFONY_TRUSTED_PROXIES is required}
+    SYMFONY_TRUSTED_HEADERS: ${SYMFONY_TRUSTED_HEADERS:-x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port}
+    MAILER_DSN: ${MAILER_DSN:-null://null}
+    MAILER_FROM_EMAIL: ${MAILER_FROM_EMAIL:-no-reply@example.test}
+    MAILER_FROM_NAME: ${MAILER_FROM_NAME:-КомУчёт}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  read_only: true
+  tmpfs:
+    - /tmp
+  volumes:
+    - php_var:/var/www/html/var
+  restart: unless-stopped
+
+services:
+  php-web:
+    <<: *php-prod-base
+    tmpfs:
+      - /tmp
+      - /run
+    volumes:
+      - php_var:/var/www/html/var
+      - php_socket:/run/php
+
+  php-cli:
+    <<: *php-prod-base
+    command: ["sleep", "infinity"]
+
+  nginx:
+    image: ${NGINX_IMAGE:-snt-nginx:latest}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    volumes:
+      - php_socket:/run/php
+    restart: unless-stopped
+
+volumes:
+  php_var:
+  php_socket:

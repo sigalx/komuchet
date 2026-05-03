@@ -1,0 +1,11 @@
+twig:
+    file_name_pattern: '*.twig'
+    form_themes:
+        - 'bootstrap_5_layout.html.twig'
+    globals:
+        workspace_context: '@App\Service\WorkspaceContext'
+        subscriber_portal_context: '@App\Service\SubscriberPortalContext'
+
+when@test:
+    twig:
+        strict_variables: true

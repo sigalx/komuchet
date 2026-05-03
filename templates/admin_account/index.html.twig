@@ -1,0 +1,83 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Участки{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Участки</h1>
+            <p class="text-secondary mb-0">Объекты, по которым ведутся начисления и платежи.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ path('app_admin_account_new') }}">Создать участок</a>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_account_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+                <div class="col-12 col-lg-5">
+                    <label for="account-search-filter" class="form-label">Поиск</label>
+                    <input id="account-search-filter" class="form-control" type="search" name="q" value="{{ filters.q }}" placeholder="Номер участка или заметка">
+                </div>
+
+                <div class="col-12 col-lg-4">
+                    <label for="account-access-filter" class="form-label">Абоненты</label>
+                    <select id="account-access-filter" class="form-select" name="access">
+                        <option value="all" {{ filters.access == 'all' ? 'selected' }}>Любые участки</option>
+                        <option value="with_subscribers" {{ filters.access == 'with_subscribers' ? 'selected' }}>С активными абонентами</option>
+                        <option value="without_subscribers" {{ filters.access == 'without_subscribers' ? 'selected' }}>Без активных абонентов</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'number', label: 'Номер', sort: sort}) }}</th>
+                        <th>Заметки</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'updated_at', label: 'Обновлен', sort: sort}) }}</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for account in accounts %}
+                    <tr>
+                        <td class="fw-semibold">{{ account.number }}</td>
+                        <td class="text-secondary">{{ account.notes ?: '—' }}</td>
+                        <td>{{ account.updatedAt|workspace_datetime }}</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_show', {'uuid': account.uuid}) }}">Открыть</a>
+                                <a class="btn btn-outline-primary" href="{{ path('app_admin_account_edit', {'uuid': account.uuid}) }}">Изменить</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-secondary py-5">
+                            {% if filters.q or filters.access != 'all' %}
+                                Участки не найдены.
+                            {% else %}
+                                Участки пока не созданы.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

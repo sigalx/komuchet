@@ -1,0 +1,60 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Настройки расчетов{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Настройки расчетов</h1>
+            <p class="text-secondary mb-0">{{ billing_settings.workspace.name }}</p>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ form_start(form) }}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        {{ form_row(form.associationName) }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form_row(form.timezone) }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form_row(form.invoiceGenerationDay) }}
+                    </div>
+                    <div class="col-md-6">
+                        {{ form_row(form.readingFreshnessWindowDays) }}
+                    </div>
+                </div>
+
+                <button class="btn btn-primary">Сохранить</button>
+            {{ form_end(form) }}
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Текущие значения</h2>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Название хозяйства</dt>
+                <dd class="col-sm-8">{{ billing_settings.associationName }}</dd>
+
+                <dt class="col-sm-4">Часовой пояс</dt>
+                <dd class="col-sm-8">{{ workspace.timezone|russian_timezone_label }}</dd>
+
+                <dt class="col-sm-4">День формирования квитанций</dt>
+                <dd class="col-sm-8">{{ billing_settings.invoiceGenerationDay }}</dd>
+
+                <dt class="col-sm-4">Актуальность показаний</dt>
+                <dd class="col-sm-8">{{ billing_settings.readingFreshnessWindowDays }} дней</dd>
+
+                <dt class="col-sm-4">Созданы</dt>
+                <dd class="col-sm-8">{{ billing_settings.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-4">Обновлены</dt>
+                <dd class="col-sm-8">{{ billing_settings.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+{% endblock %}

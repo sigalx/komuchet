@@ -1,0 +1,322 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Расчет{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Расчет</h1>
+            <p class="text-secondary mb-0">{{ billing_run.kind.label }}, {{ billing_run.periodStart|date('d.m.Y') }} - {{ billing_run.periodEnd|date('d.m.Y') }}</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% if billing_run.draft %}
+                <form method="post" action="{{ path('app_admin_billing_run_recheck_issues', {uuid: billing_run.uuid}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('recheck_billing_run_issues' ~ billing_run.uuid) }}">
+                    <button class="btn btn-outline-primary">Проверить повторно</button>
+                </form>
+                <form method="post" action="{{ path('app_admin_billing_run_generate_accruals', {uuid: billing_run.uuid}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('generate_billing_run_accruals' ~ billing_run.uuid) }}">
+                    <button class="btn btn-primary">Сгенерировать начисления</button>
+                </form>
+                <form method="post" action="{{ path('app_admin_billing_run_post', {uuid: billing_run.uuid}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('post_billing_run' ~ billing_run.uuid) }}">
+                    <button class="btn btn-success" {% if not can_post_billing_run %}disabled aria-disabled="true"{% endif %}>Провести расчет</button>
+                </form>
+            {% endif %}
+            {% if billing_run.posted %}
+                <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_delivery_index') }}">
+                    Доставки
+                    <span class="badge {{ delivery_progress.badge_class }} ms-1">{{ delivery_progress.label }}</span>
+                </a>
+                <form method="post" action="{{ path('app_admin_billing_run_generate_statements', {uuid: billing_run.uuid}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('generate_billing_run_statements' ~ billing_run.uuid) }}">
+                    <button class="btn {{ statement_progress.status in ['complete', 'extra'] ? 'btn-outline-secondary' : 'btn-primary' }}" {% if statement_progress.status == 'none' %}disabled aria-disabled="true"{% endif %}>
+                        {{ statement_progress.button_label }}
+                    </button>
+                </form>
+            {% endif %}
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_billing_run_index') }}">К списку</a>
+        </div>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Сценарий конца месяца</h2>
+                    <div class="text-secondary">Порядок работы: создать черновик, проверить проблемы, сгенерировать начисления, провести расчет, сформировать квитанции.</div>
+                </div>
+            </div>
+
+            <div class="alert {{ next_action.alert_class }} mb-4">
+                <div class="fw-semibold">{{ next_action.title }}</div>
+                <div>{{ next_action.text }}</div>
+            </div>
+
+            <ol class="list-group list-group-numbered billing-run-workflow">
+                {% for step in workflow_steps %}
+                    <li class="list-group-item flex-fill d-flex justify-content-between align-items-start gap-3">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-semibold">{{ step.title }}</div>
+                            <div class="small text-secondary">{{ step.text }}</div>
+                        </div>
+                        <span class="badge {{ step.badge_class }}">{{ step.badge }}</span>
+                    </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Тип</dt>
+                <dd class="col-sm-9">{{ billing_run.kind.label }}</dd>
+
+                <dt class="col-sm-3">Период</dt>
+                <dd class="col-sm-9">{{ billing_run.periodStart|date('d.m.Y') }} - {{ billing_run.periodEnd|date('d.m.Y') }}</dd>
+
+                <dt class="col-sm-3">Статус</dt>
+                <dd class="col-sm-9">
+                    {% if billing_run.cancelled %}
+                        <span class="badge text-bg-danger">Отменен</span>
+                    {% elseif billing_run.posted %}
+                        <span class="badge text-bg-success">Проведен</span>
+                    {% else %}
+                        <span class="badge text-bg-light border">Черновик</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ billing_run.generatedAt|workspace_datetime }}</dd>
+
+                {% if billing_run.accrualsGeneratedAt %}
+                    <dt class="col-sm-3">Генерация начислений</dt>
+                    <dd class="col-sm-9">{{ billing_run.accrualsGeneratedAt|workspace_datetime }}</dd>
+                {% endif %}
+
+                {% if billing_run.postedAt %}
+                    <dt class="col-sm-3">Проведен</dt>
+                    <dd class="col-sm-9">{{ billing_run.postedAt|workspace_datetime }}</dd>
+                {% endif %}
+
+                {% if billing_run.cancelledAt %}
+                    <dt class="col-sm-3">Отменен</dt>
+                    <dd class="col-sm-9">{{ billing_run.cancelledAt|workspace_datetime }}</dd>
+
+                    <dt class="col-sm-3">Причина отмены</dt>
+                    <dd class="col-sm-9">{{ billing_run.cancellationReason ?: '—' }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">Начисления</h2>
+                <span class="badge text-bg-light border">{{ accruals|length }}</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Участок</th>
+                            <th>Тип</th>
+                            <th>Сумма</th>
+                            <th>Статус</th>
+                            <th>Создано</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for accrual in accruals %}
+                            <tr>
+                                <td>
+                                    <a href="{{ path('app_admin_account_show', {'uuid': accrual.account.uuid}) }}">{{ accrual.account.number }}</a>
+                                </td>
+                                <td>{{ accrual.type.label }}</td>
+                                <td>{{ accrual.amount|number_format(2, ',', ' ') }} руб.</td>
+                                <td>
+                                    {% if accrual.cancelledAt %}
+                                        <span class="badge text-bg-danger">Отменено</span>
+                                    {% elseif accrual.replacingAccrual %}
+                                        <span class="badge text-bg-secondary">Заменено</span>
+                                    {% elseif accrual.postedAt %}
+                                        <span class="badge text-bg-success">Проведено</span>
+                                    {% else %}
+                                        <span class="badge text-bg-light border">Черновик</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ accrual.createdAt|workspace_datetime }}</td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_accrual_show', {uuid: accrual.uuid}) }}">Открыть</a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-secondary">Начисления пока не сгенерированы.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">Квитанции</h2>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge {{ statement_progress.status == 'complete' ? 'text-bg-success' : (statement_progress.status in ['partial', 'extra'] ? 'text-bg-warning' : 'text-bg-light border') }}">
+                        {{ statement_progress.active_count }} / {{ statement_progress.expected_count }}
+                    </span>
+                    <span class="badge {{ delivery_progress.badge_class }}">{{ delivery_progress.label }}</span>
+                    {% if billing_run.posted and statement_progress.status == 'complete' %}
+                        <span class="small text-secondary">Квитанции сформированы по всем участкам с начислениями.</span>
+                    {% elseif billing_run.posted and statement_progress.status == 'partial' %}
+                        <span class="small text-secondary">Нужно сформировать недостающие: {{ statement_progress.missing_count }}.</span>
+                    {% elseif billing_run.posted and statement_progress.status == 'pending' %}
+                        <span class="small text-secondary">Квитанции ещё не сформированы.</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Участок</th>
+                            <th>Квитанция</th>
+                            <th>К оплате</th>
+                            <th>Создана</th>
+                            <th>Доставка</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in statement_rows %}
+                            {% set statement = row.statement %}
+                            <tr>
+                                <td>{{ statement.accountNumber }}</td>
+                                <td>{{ statement.number }}</td>
+                                <td>{{ statement.amountToPay|number_format(2, ',', ' ') }} руб.</td>
+                                <td>{{ statement.generatedAt|workspace_datetime }}</td>
+                                <td>
+                                    <span class="badge {{ row.delivery_summary.badge_class }}">{{ row.delivery_summary.label }}</span>
+                                    {% if row.deliveries %}
+                                        <div class="small text-secondary mt-1">
+                                            {% for delivery in row.deliveries %}
+                                                <div>{{ delivery.recipientEmail }} — {{ delivery.statusLabel }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if statement.account %}
+                                        <div class="btn-group btn-group-sm">
+                                            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_snapshot_show', {uuid: statement.account.uuid, statementUuid: statement.uuid}) }}">Открыть</a>
+                                            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_snapshot_pdf', {uuid: statement.account.uuid, statementUuid: statement.uuid}) }}">PDF</a>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-secondary">Квитанции по расчету пока не сформированы.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">Проблемы расчета</h2>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <span class="badge text-bg-light border">{{ issues|length }}</span>
+                    {% if billing_run.draft and open_issue_count > 0 %}
+                        <form method="post" action="{{ path('app_admin_billing_run_issues_ignore_all', {uuid: billing_run.uuid}) }}" onsubmit="return confirm('Проигнорировать все открытые проблемы расчета? Проведение расчета станет возможно после повторной генерации начислений.');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('ignore_all_billing_run_issues' ~ billing_run.uuid) }}">
+                            <button class="btn btn-sm btn-outline-warning">Игнорировать всё</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Участок</th>
+                            <th>Тип</th>
+                            <th>Сообщение</th>
+                            <th>Статус</th>
+                            <th>Создано</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issues %}
+                            {% set issue_uuid = issue.uuid.toRfc4122 %}
+                            <tr>
+                                <td>
+                                    <a href="{{ path('app_admin_account_show', {'uuid': issue.account.uuid}) }}">{{ issue.account.number }}</a>
+                                </td>
+                                <td>{{ issue.issueType.label }}</td>
+                                <td>{{ issue.message|nl2br }}</td>
+                                <td>
+                                    {% if issue.open %}
+                                        <span class="badge text-bg-warning">Открыта</span>
+                                    {% else %}
+                                        <span class="badge text-bg-light border">Закрыта</span>
+                                        {% if issue.closeReason %}
+                                            <div class="small text-secondary mt-1">{{ issue.closeReason.label }}</div>
+                                        {% endif %}
+                                        {% if issue.closeComment %}
+                                            <div class="small text-secondary mt-1">{{ issue.closeComment }}</div>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>{{ issue.createdAt|workspace_datetime }}</td>
+                                <td>
+                                    {% if issue_close_forms[issue_uuid] is defined %}
+                                        {% set close_form = issue_close_forms[issue_uuid] %}
+                                        {{ form_start(close_form, {attr: {class: 'd-grid gap-2 billing-run-issue-close-form'}}) }}
+                                            {{ form_row(close_form.reason, {label_attr: {class: 'small'}, attr: {class: 'form-select form-select-sm'}}) }}
+                                            {{ form_row(close_form.comment, {label_attr: {class: 'small'}, attr: {class: 'form-control form-control-sm', rows: 2}}) }}
+                                            <button class="btn btn-sm btn-outline-secondary">Закрыть</button>
+                                        {{ form_end(close_form) }}
+                                    {% else %}
+                                        <span class="text-secondary">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-secondary">Проблемы не найдены.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    {% if billing_run.draft %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Отменить расчет</h2>
+                {{ form_start(cancel_form) }}
+                    {{ form_row(cancel_form.reason) }}
+                    <button class="btn btn-outline-danger">Отменить</button>
+                {{ form_end(cancel_form) }}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

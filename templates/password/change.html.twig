@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Смена пароля{% endblock %}
+
+{% block body %}
+    <main class="auth-page">
+        <section class="auth-panel card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">Смена пароля</h1>
+
+                {% for label, messages in app.flashes %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ label == 'error' ? 'danger' : label }}">{{ message }}</div>
+                    {% endfor %}
+                {% endfor %}
+
+                {% if password_expired %}
+                    <div class="alert alert-warning">
+                        Пароль больше не действителен. Установите новый пароль, чтобы продолжить работу.
+                    </div>
+                {% endif %}
+
+                {{ form_start(form) }}
+                    {{ form_row(form.currentPassword) }}
+                    {{ form_row(form.plainPassword) }}
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" type="submit">Сохранить пароль</button>
+                        {% if password_expired %}
+                            <a class="btn btn-outline-secondary" href="{{ logout_path() }}">Выйти</a>
+                        {% else %}
+                            <a class="btn btn-outline-secondary" href="{{ path('app_profile') }}">К профилю</a>
+                        {% endif %}
+                    </div>
+                {{ form_end(form) }}
+            </div>
+        </section>
+    </main>
+{% endblock %}

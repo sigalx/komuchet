@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}КомУчёт{% endblock %}
+
+{% block body %}
+    <main class="auth-page">
+        <section class="auth-panel card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">КомУчёт</h1>
+
+                <p class="text-secondary">{{ app.user.primaryEmail ?? 'Пользователь без email' }}</p>
+                <p>Выберите раздел для работы.</p>
+
+                <div class="d-flex gap-2">
+                    {% if is_granted('SUBSCRIBER_PORTAL_ACCESS') %}
+                        <a class="btn btn-primary" href="{{ path('app_subscriber_portal') }}">Личный кабинет</a>
+                    {% endif %}
+                    {% if is_granted('WORKSPACE_ACCESS') %}
+                        <a class="btn btn-outline-primary" href="{{ path('app_admin') }}">Админка</a>
+                    {% endif %}
+                    <a class="btn btn-outline-secondary" href="{{ path('app_profile') }}">Профиль</a>
+                    <a class="btn btn-outline-secondary" href="{{ logout_path() }}">Выйти</a>
+                </div>
+            </div>
+        </section>
+    </main>
+{% endblock %}

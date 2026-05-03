@@ -1,0 +1,42 @@
+{{ form_start(form) }}
+    <div class="row g-3">
+        {% if form.account is defined %}
+            <div class="col-md-6">
+                {{ form_row(form.account) }}
+            </div>
+        {% endif %}
+
+        {% if form.tariffZones is defined %}
+            <div class="col-md-6">
+                {{ form_row(form.tariffZones) }}
+            </div>
+        {% endif %}
+
+        <div class="col-md-4">
+            {{ form_row(form.serialNumber) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.model) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.installedOn) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.removedOn) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.verifiedOn) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.verificationValidUntil) }}
+        </div>
+        <div class="col-12">
+            {{ form_row(form.notes) }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_meter_index') }}">Отмена</a>
+    </div>
+{{ form_end(form) }}

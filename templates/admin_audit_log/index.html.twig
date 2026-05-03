@@ -1,0 +1,174 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Аудит{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Аудит</h1>
+            <p class="text-secondary mb-0">Журнал значимых действий и системных событий.</p>
+        </div>
+        <span class="badge text-bg-light border fs-6">{{ audit_logs|length }}</span>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_audit_log_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                {% if is_global_admin %}
+                    <div class="col-12 col-xl-3 col-lg-4">
+                        <label for="audit-workspace-filter" class="form-label">Хозяйство</label>
+                        <select id="audit-workspace-filter" class="form-select" name="workspace">
+                            <option value="all" {{ filters.workspace == 'all' ? 'selected' }}>Все события</option>
+                            <option value="current" {{ filters.workspace == 'current' ? 'selected' }}>Текущее хозяйство</option>
+                            <option value="global" {{ filters.workspace == 'global' ? 'selected' }}>Глобальные события</option>
+                            {% for workspace in workspaces %}
+                                {% set workspace_uuid = workspace.uuid.toRfc4122() %}
+                                <option value="{{ workspace_uuid }}" {{ filters.workspace == workspace_uuid ? 'selected' }}>
+                                    {{ workspace.name }} ({{ workspace.code }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+
+                <div class="col-12 col-xl-2 col-lg-4">
+                    <label for="audit-action-filter" class="form-label">Действие</label>
+                    <input id="audit-action-filter" class="form-control" type="search" name="action" value="{{ filters.action }}" placeholder="payment.cancelled">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-4">
+                    <label for="audit-source-filter" class="form-label">Источник</label>
+                    <select id="audit-source-filter" class="form-select" name="source">
+                        <option value="">Любой</option>
+                        {% for source in sources %}
+                            <option value="{{ source.value }}" {{ filters.source == source.value ? 'selected' }}>{{ source.value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-4">
+                    <label for="audit-actor-filter" class="form-label">Пользователь</label>
+                    <input id="audit-actor-filter" class="form-control" type="search" name="actor" value="{{ filters.actor }}" placeholder="email или uuid">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-4">
+                    <label for="audit-entity-table-filter" class="form-label">Таблица</label>
+                    <input id="audit-entity-table-filter" class="form-control" type="search" name="entity_table" value="{{ filters.entity_table }}" placeholder="payments">
+                </div>
+
+                <div class="col-12 col-xl-3 col-lg-4">
+                    <label for="audit-entity-uuid-filter" class="form-label">Entity UUID</label>
+                    <input id="audit-entity-uuid-filter" class="form-control" type="search" name="entity_uuid" value="{{ filters.entity_uuid }}">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-4">
+                    <label for="audit-occurred-from-filter" class="form-label">С даты</label>
+                    <input id="audit-occurred-from-filter" class="form-control js-date-picker" type="text" name="occurred_from" value="{{ filters.occurred_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-4">
+                    <label for="audit-occurred-to-filter" class="form-label">По дату</label>
+                    <input id="audit-occurred-to-filter" class="form-control js-date-picker" type="text" name="occurred_to" value="{{ filters.occurred_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-3 col-lg-4">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_audit_log_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'occurred_at', label: 'Время', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'workspace', label: 'Хозяйство', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'actor', label: 'Пользователь', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'source', label: 'Источник', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'action', label: 'Действие', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'entity_table', label: 'Сущность', sort: sort}) }}</th>
+                        <th>Детали</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for audit_log in audit_logs %}
+                    <tr>
+                        <td>
+                            {{ audit_log.occurredAt|workspace_datetime('d.m.Y H:i:s') }}
+                            <div class="small text-secondary"><code>{{ audit_log.uuid }}</code></div>
+                        </td>
+                        <td>
+                            {% if audit_log.workspace %}
+                                {{ audit_log.workspace.name }}
+                                <div class="small text-secondary">{{ audit_log.workspace.code }}</div>
+                            {% else %}
+                                <span class="badge text-bg-dark">global</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if audit_log.actorUser %}
+                                {{ audit_log.actorUser.primaryEmail ?: audit_log.actorUser.uuid }}
+                                <div class="small text-secondary"><code>{{ audit_log.actorUser.uuid }}</code></div>
+                            {% else %}
+                                <span class="text-secondary">Система</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge text-bg-light border">{{ audit_log.source.value }}</span></td>
+                        <td><code>{{ audit_log.action }}</code></td>
+                        <td>
+                            {% if audit_log.entityTable %}
+                                {{ audit_log.entityTable }}
+                                {% if audit_log.entityUuid %}
+                                    <div class="small text-secondary"><code>{{ audit_log.entityUuid }}</code></div>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if audit_log.changedFields %}
+                                <div class="small mb-1">Поля: {{ audit_log.changedFields|join(', ') }}</div>
+                            {% endif %}
+                            {% if audit_log.reason %}
+                                <div class="small text-secondary mb-1">{{ audit_log.reason }}</div>
+                            {% endif %}
+                            {% if audit_log.oldValues or audit_log.newValues or audit_log.entityPk %}
+                                <details>
+                                    <summary class="small">JSON</summary>
+                                    {% if audit_log.entityPk %}
+                                        <div class="small text-secondary mt-2">PK</div>
+                                        <pre class="small bg-light border rounded p-2 mb-2">{{ audit_log.entityPk|json_encode }}</pre>
+                                    {% endif %}
+                                    {% if audit_log.oldValues %}
+                                        <div class="small text-secondary">Old</div>
+                                        <pre class="small bg-light border rounded p-2 mb-2">{{ audit_log.oldValues|json_encode }}</pre>
+                                    {% endif %}
+                                    {% if audit_log.newValues %}
+                                        <div class="small text-secondary">New</div>
+                                        <pre class="small bg-light border rounded p-2 mb-0">{{ audit_log.newValues|json_encode }}</pre>
+                                    {% endif %}
+                                </details>
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-secondary py-5">События аудита не найдены.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

@@ -1,0 +1,11 @@
+{{ form_start(form) }}
+    {{ form_row(form.code) }}
+    {{ form_row(form.name) }}
+    {{ form_row(form.description) }}
+    {{ form_row(form.timezone) }}
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_workspace_index') }}">К списку</a>
+    </div>
+{{ form_end(form) }}

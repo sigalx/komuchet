@@ -1,0 +1,12 @@
+{% extends 'subscriber_portal/base.html.twig' %}
+
+{% block title %}Баланс и операции по участку {{ statement.account.number }} · КомУчёт{% endblock %}
+
+{% block portal_body %}
+    {{ include('account_statement/_content.html.twig', {
+        statement: statement,
+        heading: 'Баланс и операции по участку ' ~ statement.account.number,
+        back_url: path('app_subscriber_portal_account_show', {'uuid': statement.account.uuid}),
+        back_label: 'К участку',
+    }) }}
+{% endblock %}

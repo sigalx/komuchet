@@ -1,0 +1,122 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Проблемы расчетов{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Проблемы расчетов</h1>
+            <p class="text-secondary mb-0">Открытые проблемы по всем расчетам текущего хозяйства.</p>
+        </div>
+        <span class="badge text-bg-warning fs-6">{{ issues|length }}</span>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_billing_run_issue_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                <div class="col-12 col-lg-4">
+                    <label for="billing-run-filter" class="form-label">Расчет</label>
+                    <select id="billing-run-filter" name="billing_run_uuid" class="form-select js-searchable-select" data-search-placeholder="Найти расчет">
+                        <option value="">Все расчеты</option>
+                        {% for billing_run in billing_runs %}
+                            {% set billing_run_uuid = billing_run.uuid.toRfc4122() %}
+                            <option value="{{ billing_run_uuid }}" {{ filters.billing_run_uuid == billing_run_uuid ? 'selected' }}>
+                                {{ billing_run.periodStart|date('d.m.Y') }} - {{ billing_run.periodEnd|date('d.m.Y') }} · {{ billing_run.kind.label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="account-filter" class="form-label">Участок</label>
+                    <select id="account-filter" name="account_uuid" class="form-select js-searchable-select" data-search-placeholder="Найти участок">
+                        <option value="">Все участки</option>
+                        {% for account in accounts %}
+                            {% set account_uuid = account.uuid.toRfc4122() %}
+                            <option value="{{ account_uuid }}" {{ filters.account_uuid == account_uuid ? 'selected' }}>
+                                {{ account.number }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="issue-type-filter" class="form-label">Тип проблемы</label>
+                    <select id="issue-type-filter" name="issue_type" class="form-select">
+                        <option value="">Все типы</option>
+                        {% for issue_type in issue_types %}
+                            <option value="{{ issue_type.value }}" {{ filters.issue_type == issue_type.value ? 'selected' }}>
+                                {{ issue_type.label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-2">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_billing_run_issue_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'billing_run_period', label: 'Расчет', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'account_number', label: 'Участок', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'issue_type', label: 'Тип', sort: sort}) }}</th>
+                        <th>Сообщение</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'updated_at', label: 'Обновлена', sort: sort}) }}</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for issue in issues %}
+                    <tr>
+                        <td>
+                            <a href="{{ path('app_admin_billing_run_show', {'uuid': issue.billingRun.uuid}) }}">
+                                {{ issue.billingRun.periodStart|date('d.m.Y') }} - {{ issue.billingRun.periodEnd|date('d.m.Y') }}
+                            </a>
+                            <div class="small text-secondary">{{ issue.billingRun.kind.label }}</div>
+                        </td>
+                        <td>
+                            <a href="{{ path('app_admin_account_show', {'uuid': issue.account.uuid}) }}">{{ issue.account.number }}</a>
+                        </td>
+                        <td>{{ issue.issueType.label }}</td>
+                        <td>{{ issue.message|nl2br }}</td>
+                        <td>{{ issue.updatedAt|workspace_datetime }}</td>
+                        <td class="text-end">
+                            {% set issue_uuid = issue.uuid.toRfc4122() %}
+                            <div class="d-grid gap-2">
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_billing_run_show', {'uuid': issue.billingRun.uuid}) }}">Открыть расчет</a>
+                                {% if issue_close_forms[issue_uuid] is defined %}
+                                    {% set close_form = issue_close_forms[issue_uuid] %}
+                                    {{ form_start(close_form, {attr: {class: 'd-grid gap-2 billing-run-issue-close-form text-start'}}) }}
+                                        {{ form_row(close_form.reason, {label_attr: {class: 'small'}, attr: {class: 'form-select form-select-sm'}}) }}
+                                        {{ form_row(close_form.comment, {label_attr: {class: 'small'}, attr: {class: 'form-control form-control-sm', rows: 2}}) }}
+                                        <button class="btn btn-sm btn-outline-secondary">Закрыть</button>
+                                    {{ form_end(close_form) }}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-5">Открытых проблем расчетов нет.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

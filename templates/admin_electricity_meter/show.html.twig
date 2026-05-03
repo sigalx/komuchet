@@ -1,0 +1,142 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Электросчетчик {{ electricity_meter.account.number }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Электросчетчик участка {{ electricity_meter.account.number }}</h1>
+            <p class="text-secondary mb-0">{{ electricity_meter.serialNumber ?: 'Серийный номер не указан' }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_meter_index') }}">К списку</a>
+            <a class="btn btn-outline-primary" href="{{ path('app_admin_electricity_meter_reading_new', {'meterUuid': electricity_meter.uuid}) }}">Внести показание</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_electricity_meter_edit', {'uuid': electricity_meter.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Участок</dt>
+                <dd class="col-sm-9">
+                    <a href="{{ path('app_admin_account_show', {'uuid': electricity_meter.account.uuid}) }}">{{ electricity_meter.account.number }}</a>
+                </dd>
+
+                <dt class="col-sm-3">Серийный номер</dt>
+                <dd class="col-sm-9">{{ electricity_meter.serialNumber ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Модель</dt>
+                <dd class="col-sm-9">{{ electricity_meter.model ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Дата установки</dt>
+                <dd class="col-sm-9">{{ electricity_meter.installedOn|date('d.m.Y') }}</dd>
+
+                <dt class="col-sm-3">Дата снятия</dt>
+                <dd class="col-sm-9">{{ electricity_meter.removedOn ? electricity_meter.removedOn|date('d.m.Y') : '—' }}</dd>
+
+                <dt class="col-sm-3">Дата поверки</dt>
+                <dd class="col-sm-9">{{ electricity_meter.verifiedOn ? electricity_meter.verifiedOn|date('d.m.Y') : '—' }}</dd>
+
+                <dt class="col-sm-3">Поверка действует до</dt>
+                <dd class="col-sm-9">{{ electricity_meter.verificationValidUntil ? electricity_meter.verificationValidUntil|date('d.m.Y') : '—' }}</dd>
+
+                <dt class="col-sm-3">Статус</dt>
+                <dd class="col-sm-9">
+                    {% if electricity_meter.removedOn %}
+                        <span class="badge text-bg-secondary">Снят</span>
+                    {% else %}
+                        <span class="badge text-bg-success">Активен</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Заметки</dt>
+                <dd class="col-sm-9">{{ electricity_meter.notes ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ electricity_meter.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлен</dt>
+                <dd class="col-sm-9">{{ electricity_meter.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Регистры счетчика</h2>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Код зоны</th>
+                            <th>Название</th>
+                            <th>Описание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for register in registers %}
+                        <tr>
+                            <td><code>{{ register.tariffZone.code }}</code></td>
+                            <td class="fw-semibold">{{ register.tariffZone.name }}</td>
+                            <td class="text-secondary">{{ register.tariffZone.description ?: '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-secondary py-4">Регистры счетчика не заданы.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <h2 class="h5 mb-0">Показания</h2>
+                <a class="btn btn-sm btn-primary" href="{{ path('app_admin_electricity_meter_reading_new', {'meterUuid': electricity_meter.uuid}) }}">Внести показание</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Дата снятия</th>
+                            <th>Зона</th>
+                            <th>Показание</th>
+                            <th>Статус</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for reading in readings %}
+                        <tr>
+                            <td>{{ reading.takenOn|date('d.m.Y') }}</td>
+                            <td><code>{{ reading.tariffZone.code }}</code> {{ reading.tariffZone.name }}</td>
+                            <td>{{ reading.readingValue|number_format(3, ',', ' ') }}</td>
+                            <td>
+                                {% if reading.cancelledAt %}
+                                    <span class="badge text-bg-danger">Отменено</span>
+                                {% elseif reading.replacingReading %}
+                                    <span class="badge text-bg-secondary">Заменено</span>
+                                {% else %}
+                                    <span class="badge text-bg-success">Активно</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_electricity_meter_reading_show', {'uuid': reading.uuid}) }}">Открыть</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Показания пока не внесены.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+{% endblock %}

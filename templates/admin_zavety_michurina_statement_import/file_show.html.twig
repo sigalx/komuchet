@@ -1,0 +1,313 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Файл импорта{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            {% if batch %}
+                <a class="small text-decoration-none" href="{{ path('app_admin_zavety_michurina_statement_import_show', {uuid: batch.uuid}) }}">← К пачке импорта</a>
+            {% else %}
+                <a class="small text-decoration-none" href="{{ path('app_admin_zavety_michurina_statement_import_index') }}">← К пачкам импорта</a>
+            {% endif %}
+            <h1 class="h3 mt-2 mb-1">{{ file.originalFilename }}</h1>
+            <p class="text-secondary mb-0">Статус: <span class="badge {{ file.status.badgeClass() }}">{{ file.status.label() }}</span></p>
+        </div>
+        {% if file.canBeDeleted %}
+            <form method="post" action="{{ path('app_admin_zavety_michurina_statement_import_file_delete', {uuid: file.uuid}) }}" onsubmit="return confirm('Удалить этот файл из staging-импорта?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete_zm_statement_import_file' ~ file.uuid) }}">
+                <button class="btn btn-outline-danger" type="submit">Удалить файл</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if file.parseError %}
+        <div class="alert alert-danger">{{ file.parseError }}</div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-5">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Сводка</h2>
+
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Добавлен</dt>
+                        <dd class="col-sm-7">{{ file.createdAt|workspace_datetime }}</dd>
+
+                        <dt class="col-sm-5">Распознан</dt>
+                        <dd class="col-sm-7">{{ file.parsedAt ? file.parsedAt|workspace_datetime : '—' }}</dd>
+
+                        <dt class="col-sm-5">Участок</dt>
+                        <dd class="col-sm-7">{{ file.detectedAccountNumber ?: '—' }}</dd>
+
+                        <dt class="col-sm-5">ФИО</dt>
+                        <dd class="col-sm-7">{{ file.detectedSubscriberFullName ?: '—' }}</dd>
+
+                        <dt class="col-sm-5">Размер файла</dt>
+                        <dd class="col-sm-7">{{ file.fileSizeBytes is not null ? file.fileSizeBytes|number_format(0, ',', ' ') ~ ' байт' : '—' }}</dd>
+                    </dl>
+
+                    <details class="mt-3">
+                        <summary class="small">Технические данные</summary>
+                        <dl class="row small mt-3 mb-0">
+                            <dt class="col-sm-5">Parser</dt>
+                            <dd class="col-sm-7"><code>{{ file.parserVersion }}</code></dd>
+
+                            <dt class="col-sm-5">SHA-256</dt>
+                            <dd class="col-sm-7 text-break">{{ file.sourceSha256 ?: '—' }}</dd>
+
+                            <dt class="col-sm-5">Storage key</dt>
+                            <dd class="col-sm-7 text-break">{{ file.storageKey ?: '—' }}</dd>
+                        </dl>
+                    </details>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-7">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Распознанные данные</h2>
+
+                    {% if parsed_result %}
+                        {% set account = parsed_result.account ?? {} %}
+                        {% set subscriber = parsed_result.subscriber ?? {} %}
+                        {% set meter = parsed_result.electricity_meter ?? {} %}
+                        {% set totals = parsed_result.totals ?? {} %}
+                        {% set requisites = parsed_result.payment_requisites ?? {} %}
+                        {% set warnings = parsed_result.warnings ?? [] %}
+
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Участок</dt>
+                            <dd class="col-sm-7">{{ account.number ?? '—' }}</dd>
+
+                            <dt class="col-sm-5">Абонент</dt>
+                            <dd class="col-sm-7">{{ subscriber.full_name ?? '—' }}</dd>
+
+                            <dt class="col-sm-5">Счетчик</dt>
+                            <dd class="col-sm-7">
+                                {% if meter.serial_number is defined and meter.serial_number %}
+                                    № {{ meter.serial_number }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                                {% if meter.installed_on is defined and meter.installed_on %}
+                                    <div class="small text-secondary">Установлен: {{ meter.installed_on|date('d.m.Y') }}</div>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-5">Строк таблицы</dt>
+                            <dd class="col-sm-7">{{ parsed_result.rows is defined ? parsed_result.rows|length : 0 }}</dd>
+
+                            <dt class="col-sm-5">Баланс</dt>
+                            <dd class="col-sm-7">{{ totals.balance ?? '—' }}</dd>
+
+                            <dt class="col-sm-5">Получатель</dt>
+                            <dd class="col-sm-7">{{ requisites.recipient_name ?? '—' }}</dd>
+                        </dl>
+
+                        {% if warnings %}
+                            <div class="alert alert-warning mt-3 mb-0">
+                                {% for warning in warnings %}
+                                    <div>{{ warning }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-secondary mb-0">Результата распознавания нет.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    {% if apply_preview is defined %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                    <div>
+                        <h2 class="h5 mb-1">Предпросмотр применения</h2>
+                        <p class="text-secondary mb-0">Записи в основные таблицы на этом шаге не создаются.</p>
+                    </div>
+                    <div class="d-flex flex-wrap justify-content-end gap-2">
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge text-bg-success">Найдено: {{ apply_preview.summary.reuse }}</span>
+                            <span class="badge text-bg-primary">Создать: {{ apply_preview.summary.create }}</span>
+                            <span class="badge text-bg-warning">Проверить: {{ apply_preview.summary.attention }}</span>
+                            <span class="badge text-bg-danger">Блокеры: {{ apply_preview.summary.blocked }}</span>
+                        </div>
+                        {% if file.status.value == 'parsed' %}
+                            <form method="post" action="{{ path('app_admin_zavety_michurina_statement_import_file_apply', {uuid: file.uuid}) }}" onsubmit="return confirm('Применить распознанные данные к основным таблицам?');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('apply_zm_statement_import_file' ~ file.uuid) }}">
+                                <button class="btn btn-primary btn-sm" type="submit" {% if not apply_preview.can_apply %}disabled{% endif %}>Применить</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if apply_preview.warnings %}
+                    <div class="alert alert-warning">
+                        {% for warning in apply_preview.warnings %}
+                            <div>{{ warning }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3">
+                    {% for group in apply_preview_groups %}
+                        <div class="col">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex align-items-start justify-content-between gap-2">
+                                    <div>
+                                        <div class="fw-semibold">{{ group.title }}</div>
+                                        <div class="small text-secondary">{{ group.description }}</div>
+                                    </div>
+                                    <span class="badge {{ group.badge_class }}">{{ group.items|length }}</span>
+                                </div>
+
+                                {% if group.items %}
+                                    <ul class="list-unstyled small mt-3 mb-0">
+                                        {% for item in group.items|slice(0, 4) %}
+                                            <li class="{{ loop.last ? '' : 'mb-2' }}">
+                                                <span class="fw-semibold">{{ item.title }}</span>
+                                                <div class="text-secondary">{{ item.message }}</div>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% if group.items|length > 4 %}
+                                        <div class="small text-secondary mt-2">Еще: {{ group.items|length - 4 }}.</div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="small text-secondary mt-3">Нет.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <details class="mt-4">
+                    <summary>Подробный список решений</summary>
+                    <div class="table-responsive mt-3">
+                        <table class="table align-middle">
+                            <thead>
+                            <tr>
+                                <th scope="col">Раздел</th>
+                                <th scope="col">Статус</th>
+                                <th scope="col">Решение</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in apply_preview.items %}
+                                <tr>
+                                    <td class="fw-semibold">{{ item.title }}</td>
+                                    <td><span class="badge {{ item.badge_class }}">{{ item.state_label }}</span></td>
+                                    <td>
+                                        <div>{{ item.message }}</div>
+                                        {% if item.details %}
+                                            <ul class="small text-secondary mt-2 mb-0">
+                                                {% for detail in item.details %}
+                                                    <li>{{ detail }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                {% if apply_preview.meter_segments %}
+                    <details class="mt-3">
+                        <summary>Сегменты счетчика</summary>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Сегмент</th>
+                                    <th scope="col">Период</th>
+                                    <th scope="col">Показания</th>
+                                    <th scope="col">Счетчик</th>
+                                    <th scope="col">Основание</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for segment in apply_preview.meter_segments %}
+                                    <tr>
+                                        <td>{{ segment.index }}</td>
+                                        <td>{{ segment.from ?: '—' }} - {{ segment.to ?: '—' }}</td>
+                                        <td>{{ segment.start_reading ?: '—' }} → {{ segment.end_reading ?: '—' }}</td>
+                                        <td>
+                                            {% if segment.serial_number %}
+                                                № {{ segment.serial_number }}
+                                                {% if segment.installed_on %}
+                                                    <div class="small text-secondary">Установлен: {{ segment.installed_on|date('d.m.Y') }}</div>
+                                                {% endif %}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                        <td class="small text-secondary">{{ segment.reason }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                {% endif %}
+
+                {% if apply_preview.tariff_periods %}
+                    <details class="mt-3">
+                        <summary>Уникальные наборы ставок</summary>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Период</th>
+                                    <th scope="col">Соцнорма</th>
+                                    <th scope="col">Сверх нормы</th>
+                                    <th scope="col">Строк</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for period in apply_preview.tariff_periods %}
+                                    <tr>
+                                        <td>{{ period.from }} - {{ period.to ?: '—' }}</td>
+                                        <td>{{ period.social_norm_rate }}</td>
+                                        <td>{{ period.above_norm_rate }}</td>
+                                        <td>{{ period.rows }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                {% endif %}
+
+                {% if apply_preview.social_norms %}
+                    <details class="mt-3">
+                        <summary>Нормы по расчетным периодам</summary>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            {% for norm in apply_preview.social_norms %}
+                                <span class="badge text-bg-light border">{{ norm.period_start|date('m.Y') }}: {{ norm.value }} кВт*ч</span>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if parsed_result_json %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <details>
+                    <summary>JSON результата</summary>
+                    <pre class="small bg-light border rounded p-3 mt-3 mb-0 overflow-auto">{{ parsed_result_json }}</pre>
+                </details>
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,225 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Печатная квитанция № {{ statement.number }}{% endblock %}
+
+{% block body %}
+    <div class="statement-print-page">
+        <div class="statement-print-toolbar no-print">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_statement_snapshot_show', {'uuid': statement.account.uuid, 'statementUuid': statement.uuid}) }}">Назад</a>
+            <a class="btn btn-outline-primary" href="{{ path('app_admin_account_statement_snapshot_pdf', {'uuid': statement.account.uuid, 'statementUuid': statement.uuid}) }}">PDF</a>
+            <button class="btn btn-primary" type="button" onclick="window.print()">Печать</button>
+        </div>
+
+        <main class="statement-print-document">
+            <header class="statement-print-header">
+                <div>
+                    <div class="text-secondary small">КомУчёт</div>
+                    <h1>Квитанция № {{ statement.number }}</h1>
+                    <p>{{ statement.workspaceName }} · участок {{ statement.accountNumber }}</p>
+                </div>
+                <div class="statement-print-amount">
+                    <div class="text-secondary small">Сумма к оплате</div>
+                    <div>{{ statement.amountToPay|number_format(2, ',', ' ') }} руб.</div>
+                </div>
+            </header>
+
+            {% if statement.cancelled %}
+                <div class="statement-print-warning">
+                    Квитанция отменена {{ statement.cancelledAt|date('d.m.Y H:i') }}.
+                    {% if statement.cancellationReason %}
+                        Причина: {{ statement.cancellationReason }}
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <section class="statement-print-section">
+                <h2>Реквизиты</h2>
+                <dl class="statement-print-details">
+                    <dt>Хозяйство</dt>
+                    <dd>{{ statement.workspaceName }}</dd>
+                    <dt>Участок</dt>
+                    <dd>{{ statement.accountNumber }}</dd>
+                    <dt>Дата квитанции</dt>
+                    <dd>{{ statement.statementDate|date('d.m.Y') }}</dd>
+                    <dt>Сформирована</dt>
+                    <dd>{{ statement.generatedAt|date('d.m.Y H:i') }}</dd>
+                </dl>
+            </section>
+
+            {% if statement.hasPaymentRequisites() %}
+                <section class="statement-print-section">
+                    <h2>Платежные реквизиты</h2>
+                    <div class="statement-print-payment-block">
+                        <dl class="statement-print-details">
+                            <dt>Получатель</dt>
+                            <dd>{{ statement.paymentRecipientName }}</dd>
+                            <dt>ИНН / КПП</dt>
+                            <dd>{{ statement.paymentRecipientInn ?: '—' }} / {{ statement.paymentRecipientKpp ?: '—' }}</dd>
+                            <dt>Банк</dt>
+                            <dd>{{ statement.paymentBankName }}</dd>
+                            <dt>БИК</dt>
+                            <dd>{{ statement.paymentBankBik }}</dd>
+                            <dt>Корр. счет</dt>
+                            <dd>{{ statement.paymentBankCorrespondentAccount ?: '—' }}</dd>
+                            <dt>Расчетный счет</dt>
+                            <dd>{{ statement.paymentBankAccount }}</dd>
+                            <dt>Назначение платежа</dt>
+                            <dd>{{ statement.paymentPurpose ?: '—' }}</dd>
+                        </dl>
+
+                        {% if payment_qr_code is defined and payment_qr_code %}
+                            <div class="statement-print-payment-qr">
+                                <img src="{{ payment_qr_code.dataUri }}" alt="QR-код оплаты квитанции № {{ statement.number }}">
+                                <div>Сканируйте для оплаты</div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </section>
+            {% endif %}
+
+            <section class="statement-print-section statement-print-summary">
+                <div>
+                    <span>Начислено</span>
+                    <strong>{{ statement.activeAccrualTotal|number_format(2, ',', ' ') }} руб.</strong>
+                </div>
+                <div>
+                    <span>Оплачено</span>
+                    <strong>{{ statement.activePaymentTotal|number_format(2, ',', ' ') }} руб.</strong>
+                </div>
+                <div>
+                    <span>Баланс</span>
+                    <strong>{{ statement.balanceAmount|number_format(2, ',', ' ') }} руб.</strong>
+                </div>
+                <div>
+                    <span>К оплате</span>
+                    <strong>{{ statement.amountToPay|number_format(2, ',', ' ') }} руб.</strong>
+                </div>
+            </section>
+
+            <section class="statement-print-section">
+                <h2>Начисления</h2>
+                <table class="statement-print-table">
+                    <thead>
+                        <tr>
+                            <th>Период</th>
+                            <th>Тип</th>
+                            <th>Комментарий</th>
+                            <th class="text-end">Сумма</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for accrual in accruals %}
+                        <tr>
+                            <td>{{ accrual.periodStart|date('d.m.Y') }} - {{ accrual.periodEnd|date('d.m.Y') }}</td>
+                            <td>{{ accrual.type.label }}</td>
+                            <td>{{ accrual.notes ?: '—' }}</td>
+                            <td class="text-end">{{ accrual.amount|number_format(2, ',', ' ') }} руб.</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary">Начисления отсутствуют.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            {% if electricity_registers is not empty or electricity_lines is not empty %}
+                <section class="statement-print-section">
+                    <h2>Расчет электроэнергии</h2>
+
+                    {% if electricity_registers is not empty %}
+                        <h3>Показания</h3>
+                        <table class="statement-print-table statement-print-table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Счетчик</th>
+                                    <th>Зона</th>
+                                    <th>Предыдущее</th>
+                                    <th>Текущее</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for register in electricity_registers %}
+                                <tr>
+                                    <td>
+                                        {{ register.electricityMeterModel ?: '—' }}
+                                        {% if register.electricityMeterSerialNumber %}
+                                            № {{ register.electricityMeterSerialNumber }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ register.tariffZoneName }}</td>
+                                    <td>
+                                        {% if register.previousReadingValue is not null %}
+                                            {{ register.previousReadingValue|number_format(3, ',', ' ') }} кВт⋅ч, {{ register.previousReadingTakenOn|date('d.m.Y') }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ register.currentReadingValue|number_format(3, ',', ' ') }} кВт⋅ч, {{ register.currentReadingTakenOn|date('d.m.Y') }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+
+                    {% if electricity_lines is not empty %}
+                        <h3>Строки расчета</h3>
+                        <table class="statement-print-table statement-print-table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Зона</th>
+                                    <th>Диапазон</th>
+                                    <th>Расход</th>
+                                    <th>Ставка</th>
+                                    <th class="text-end">Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for line in electricity_lines %}
+                                <tr>
+                                    <td>{{ line.tariffZoneName }}</td>
+                                    <td>{{ line.consumptionBandName }}</td>
+                                    <td>{{ line.consumptionKwh|number_format(3, ',', ' ') }} кВт⋅ч</td>
+                                    <td>{{ line.rate|number_format(6, ',', ' ') }} руб.</td>
+                                    <td class="text-end">{{ line.amount|number_format(2, ',', ' ') }} руб.</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% endif %}
+                </section>
+            {% endif %}
+
+            <section class="statement-print-section">
+                <h2>Оплаты</h2>
+                <table class="statement-print-table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Источник</th>
+                            <th>Плательщик</th>
+                            <th>Назначение</th>
+                            <th class="text-end">Сумма</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.paidOn|date('d.m.Y') }}</td>
+                            <td>{{ payment.source.value == 'import' ? 'Импорт' : 'Ручной ввод' }}</td>
+                            <td>{{ payment.payerName ?: '—' }}</td>
+                            <td>{{ payment.purpose ?: '—' }}</td>
+                            <td class="text-end">{{ payment.amount|number_format(2, ',', ' ') }} руб.</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary">Оплаты отсутствуют.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+{% endblock %}

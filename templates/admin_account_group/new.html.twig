@@ -1,0 +1,16 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новая Группа Участков{% endblock %}
+
+{% block admin_body %}
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Новая группа участков</h1>
+        <p class="text-secondary mb-0">Например: летнее использование или круглогодичное проживание.</p>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_account_group/_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

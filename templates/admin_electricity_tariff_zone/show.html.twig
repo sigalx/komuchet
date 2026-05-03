@@ -1,0 +1,40 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Тарифная Зона {{ electricity_tariff_zone.name }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Тарифная зона {{ electricity_tariff_zone.name }}</h1>
+            <p class="text-secondary mb-0">{{ electricity_tariff_zone.description ?: 'Без описания' }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_tariff_zone_index') }}">К списку</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_electricity_tariff_zone_edit', {'uuid': electricity_tariff_zone.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Код</dt>
+                <dd class="col-sm-9"><code>{{ electricity_tariff_zone.code }}</code></dd>
+
+                <dt class="col-sm-3">Название</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_zone.name }}</dd>
+
+                <dt class="col-sm-3">Описание</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_zone.description ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Порядок сортировки</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_zone.sortOrder }}</dd>
+
+                <dt class="col-sm-3">Создана</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_zone.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлена</dt>
+                <dd class="col-sm-9">{{ electricity_tariff_zone.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+{% endblock %}

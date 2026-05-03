@@ -1,0 +1,89 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Показание Электросчетчика{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Показание электросчетчика</h1>
+            <p class="text-secondary mb-0">Участок {{ electricity_meter_reading.electricityMeter.account.number }}, зона {{ electricity_meter_reading.tariffZone.name }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_meter_show', {'uuid': electricity_meter_reading.electricityMeter.uuid}) }}">К счетчику</a>
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_meter_reading_index') }}">К списку</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Участок</dt>
+                <dd class="col-sm-9">
+                    <a href="{{ path('app_admin_account_show', {'uuid': electricity_meter_reading.electricityMeter.account.uuid}) }}">{{ electricity_meter_reading.electricityMeter.account.number }}</a>
+                </dd>
+
+                <dt class="col-sm-3">Счетчик</dt>
+                <dd class="col-sm-9">
+                    <a href="{{ path('app_admin_electricity_meter_show', {'uuid': electricity_meter_reading.electricityMeter.uuid}) }}">{{ electricity_meter_reading.electricityMeter.serialNumber ?: 'серийный номер не указан' }}</a>
+                </dd>
+
+                <dt class="col-sm-3">Тарифная зона</dt>
+                <dd class="col-sm-9"><code>{{ electricity_meter_reading.tariffZone.code }}</code> {{ electricity_meter_reading.tariffZone.name }}</dd>
+
+                <dt class="col-sm-3">Дата снятия</dt>
+                <dd class="col-sm-9">{{ electricity_meter_reading.takenOn|date('d.m.Y') }}</dd>
+
+                <dt class="col-sm-3">Показание</dt>
+                <dd class="col-sm-9">{{ electricity_meter_reading.readingValue|number_format(3, ',', ' ') }} кВт⋅ч</dd>
+
+                <dt class="col-sm-3">Источник</dt>
+                <dd class="col-sm-9">
+                    {% if electricity_meter_reading.source.value == 'admin' %}
+                        Администратор
+                    {% elseif electricity_meter_reading.source.value == 'import' %}
+                        Импорт
+                    {% else %}
+                        Абонент
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Статус</dt>
+                <dd class="col-sm-9">
+                    {% if electricity_meter_reading.cancelledAt %}
+                        <span class="badge text-bg-danger">Отменено</span>
+                    {% elseif electricity_meter_reading.replacingReading %}
+                        <span class="badge text-bg-secondary">Заменено</span>
+                    {% else %}
+                        <span class="badge text-bg-success">Активно</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Передано</dt>
+                <dd class="col-sm-9">{{ electricity_meter_reading.submittedAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Заметки</dt>
+                <dd class="col-sm-9">{{ electricity_meter_reading.notes ?: '—' }}</dd>
+
+                {% if electricity_meter_reading.cancelledAt %}
+                    <dt class="col-sm-3">Отменено</dt>
+                    <dd class="col-sm-9">{{ electricity_meter_reading.cancelledAt|workspace_datetime }}</dd>
+
+                    <dt class="col-sm-3">Причина отмены</dt>
+                    <dd class="col-sm-9">{{ electricity_meter_reading.cancellationReason ?: '—' }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+    </section>
+
+    {% if electricity_meter_reading.active %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Отменить показание</h2>
+                {{ form_start(cancel_form) }}
+                    {{ form_row(cancel_form.reason) }}
+                    <button class="btn btn-outline-danger">Отменить</button>
+                {{ form_end(cancel_form) }}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

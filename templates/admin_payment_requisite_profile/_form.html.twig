@@ -1,0 +1,49 @@
+{{ form_start(form) }}
+    <div class="row g-3">
+        <div class="col-md-4">
+            {{ form_row(form.code) }}
+        </div>
+        <div class="col-md-8">
+            {{ form_row(form.name) }}
+        </div>
+
+        <div class="col-12">
+            {{ form_row(form.recipientName) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.recipientInn) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.recipientKpp) }}
+        </div>
+
+        <div class="col-12">
+            {{ form_row(form.bankName) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.bankBik) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.bankCorrespondentAccount) }}
+        </div>
+        <div class="col-md-4">
+            {{ form_row(form.bankAccount) }}
+        </div>
+
+        <div class="col-md-6">
+            {{ form_row(form.validFrom) }}
+        </div>
+        <div class="col-md-6">
+            {{ form_row(form.validTo) }}
+        </div>
+
+        <div class="col-12">
+            {{ form_row(form.paymentPurposeTemplate) }}
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_payment_requisite_profile_index') }}">Отмена</a>
+    </div>
+{{ form_end(form) }}

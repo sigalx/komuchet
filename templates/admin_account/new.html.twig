@@ -1,0 +1,16 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новый Участок{% endblock %}
+
+{% block admin_body %}
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Новый участок</h1>
+        <p class="text-secondary mb-0">Номер должен быть уникальным внутри текущего хозяйства.</p>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_account/_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

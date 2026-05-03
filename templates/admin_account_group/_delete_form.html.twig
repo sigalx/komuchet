@@ -1,0 +1,4 @@
+<form method="post" action="{{ path('app_admin_account_group_delete', {'uuid': account_group.uuid}) }}" onsubmit="return confirm('Удалить группу {{ account_group.name|e('js') }}?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ account_group.uuid) }}">
+    <button class="btn btn-outline-danger">Удалить</button>
+</form>

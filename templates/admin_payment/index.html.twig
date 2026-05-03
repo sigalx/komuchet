@@ -1,0 +1,125 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Оплаты{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Оплаты</h1>
+            <p class="text-secondary mb-0">Последние 300 ручных и импортированных оплат по текущему хозяйству.</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_index') }}">К участкам</a>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <form method="get" action="{{ path('app_admin_payment_index') }}" class="row g-3 align-items-end">
+                <input type="hidden" name="sort" value="{{ sort.field }}">
+                <input type="hidden" name="dir" value="{{ sort.dir }}">
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="payment-search-filter" class="form-label">Поиск</label>
+                    <input id="payment-search-filter" class="form-control" type="search" name="q" value="{{ filters.q }}" placeholder="Участок, сумма, плательщик или назначение">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="payment-status-filter" class="form-label">Статус</label>
+                    <select id="payment-status-filter" class="form-select" name="status">
+                        <option value="all" {{ filters.status == 'all' ? 'selected' }}>Все оплаты</option>
+                        <option value="active" {{ filters.status == 'active' ? 'selected' }}>Активные</option>
+                        <option value="cancelled" {{ filters.status == 'cancelled' ? 'selected' }}>Отмененные</option>
+                        <option value="superseded" {{ filters.status == 'superseded' ? 'selected' }}>Замененные</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="payment-source-filter" class="form-label">Источник</label>
+                    <select id="payment-source-filter" class="form-select" name="source">
+                        <option value="" {{ filters.source == '' ? 'selected' }}>Все источники</option>
+                        <option value="manual" {{ filters.source == 'manual' ? 'selected' }}>Ручной ввод</option>
+                        <option value="import" {{ filters.source == 'import' ? 'selected' }}>Импорт</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="payment-paid-on-from-filter" class="form-label">С даты</label>
+                    <input id="payment-paid-on-from-filter" class="form-control js-date-picker" type="text" name="paid_on_from" value="{{ filters.paid_on_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <label for="payment-paid-on-to-filter" class="form-label">По дату</label>
+                    <input id="payment-paid-on-to-filter" class="form-control js-date-picker" type="text" name="paid_on_to" value="{{ filters.paid_on_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-xl-2 col-lg-6">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_admin_payment_index') }}">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'paid_on', label: 'Дата', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'account_number', label: 'Участок', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'amount', label: 'Сумма', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'payer_name', label: 'Плательщик', sort: sort}) }}</th>
+                        <th>Назначение</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'source', label: 'Источник', sort: sort}) }}</th>
+                        <th>Статус</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for payment in payments %}
+                    <tr>
+                        <td>{{ payment.paidOn|date('d.m.Y') }}</td>
+                        <td>
+                            <a href="{{ path('app_admin_account_show', {'uuid': payment.account.uuid}) }}">{{ payment.account.number }}</a>
+                        </td>
+                        <td>{{ payment.amount|number_format(2, ',', ' ') }} руб.</td>
+                        <td>{{ payment.payerName ?: '—' }}</td>
+                        <td class="text-secondary">{{ payment.purpose ?: '—' }}</td>
+                        <td>
+                            {% if payment.source.value == 'import' %}
+                                Импорт
+                            {% else %}
+                                Ручной ввод
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if payment.cancelledAt %}
+                                <span class="badge text-bg-danger">Отменено</span>
+                            {% elseif payment.replacingPayment %}
+                                <span class="badge text-bg-secondary">Заменено</span>
+                            {% else %}
+                                <span class="badge text-bg-success">Активно</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_payment_show', {'uuid': payment.uuid}) }}">Открыть</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary py-5">
+                            {% if filters.q or filters.status != 'all' or filters.source or filters.paid_on_from or filters.paid_on_to %}
+                                Оплаты не найдены.
+                            {% else %}
+                                Оплаты пока не внесены.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

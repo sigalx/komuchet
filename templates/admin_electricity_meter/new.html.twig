@@ -1,0 +1,24 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новый Электросчетчик{% endblock %}
+
+{% block admin_body %}
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Новый электросчетчик</h1>
+        <p class="text-secondary mb-0">Регистры создаются вместе со счетчиком и после создания не редактируются.</p>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {% if form.account.vars.choices|length == 0 %}
+                <div class="alert alert-warning">Сначала нужно создать хотя бы один активный участок.</div>
+            {% endif %}
+
+            {% if form.tariffZones.vars.choices|length == 0 %}
+                <div class="alert alert-warning">Сначала нужно создать хотя бы одну активную тарифную зону.</div>
+            {% endif %}
+
+            {{ include('admin_electricity_meter/_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

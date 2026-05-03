@@ -1,0 +1,393 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Участок {{ account.number }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Участок {{ account.number }}</h1>
+            <p class="text-secondary mb-0">{{ account.workspace.name }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_index') }}">К списку</a>
+            <a class="btn btn-outline-primary" href="{{ path('app_admin_account_statement', {'uuid': account.uuid}) }}">Квитанция</a>
+            <a class="btn btn-outline-primary" href="{{ path('app_admin_accrual_new', {'accountUuid': account.uuid}) }}">Внести начисление</a>
+            <a class="btn btn-outline-primary" href="{{ path('app_admin_payment_new', {'accountUuid': account.uuid}) }}">Внести оплату</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_account_edit', {'uuid': account.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Номер</dt>
+                <dd class="col-sm-9">{{ account.number }}</dd>
+
+                <dt class="col-sm-3">Заметки</dt>
+                <dd class="col-sm-9">{{ account.notes ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ account.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлен</dt>
+                <dd class="col-sm-9">{{ account.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Финансы</h2>
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Начислено</dt>
+                <dd class="col-sm-9">{{ balance_summary.activeAccrualTotal|number_format(2, ',', ' ') }} руб.</dd>
+
+                <dt class="col-sm-3">Оплачено</dt>
+                <dd class="col-sm-9">{{ balance_summary.activePaymentTotal|number_format(2, ',', ' ') }} руб.</dd>
+
+                <dt class="col-sm-3">Баланс</dt>
+                <dd class="col-sm-9">
+                    <span class="fw-semibold">{{ balance_summary.balanceAmount|number_format(2, ',', ' ') }} руб.</span>
+                    {% if balance_summary.state == 'debt' %}
+                        <span class="badge text-bg-warning ms-2">К оплате</span>
+                    {% elseif balance_summary.state == 'overpayment' %}
+                        <span class="badge text-bg-info ms-2">Переплата</span>
+                    {% else %}
+                        <span class="badge text-bg-success ms-2">Закрыто</span>
+                    {% endif %}
+                </dd>
+            </dl>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Электросчетчики</h2>
+                    <p class="text-secondary mb-0">Текущие и снятые счетчики участка с последними активными показаниями.</p>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_electricity_meter_index', {q: account.number}) }}">Все счетчики</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Статус</th>
+                            <th>Счетчик</th>
+                            <th>Установлен</th>
+                            <th>Снят</th>
+                            <th>Поверка до</th>
+                            <th>Последние показания</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for electricity_meter in electricity_meters %}
+                        {% set latest_readings = latest_electricity_meter_readings_by_meter[electricity_meter.uuid.toRfc4122()]|default([]) %}
+                        <tr>
+                            <td>
+                                {% if electricity_meter.active %}
+                                    <span class="badge text-bg-success">Активен</span>
+                                {% else %}
+                                    <span class="badge text-bg-secondary">Снят</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a class="fw-semibold" href="{{ path('app_admin_electricity_meter_show', {'uuid': electricity_meter.uuid}) }}">
+                                    {{ electricity_meter.serialNumber ?: 'серийный номер не указан' }}
+                                </a>
+                                {% if electricity_meter.model %}
+                                    <div class="small text-secondary">{{ electricity_meter.model }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ electricity_meter.installedOn|date('d.m.Y') }}</td>
+                            <td>{{ electricity_meter.removedOn ? electricity_meter.removedOn|date('d.m.Y') : '—' }}</td>
+                            <td>{{ electricity_meter.verificationValidUntil ? electricity_meter.verificationValidUntil|date('d.m.Y') : '—' }}</td>
+                            <td>
+                                {% for reading in latest_readings %}
+                                    <div>
+                                        <a href="{{ path('app_admin_electricity_meter_reading_show', {'uuid': reading.uuid}) }}">
+                                            {{ reading.tariffZone.name }}:
+                                            {{ reading.readingValue|number_format(3, ',', ' ') }} кВт*ч,
+                                            {{ reading.takenOn|date('d.m.Y') }}
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_meter_show', {'uuid': electricity_meter.uuid}) }}">Открыть</a>
+                                    {% if electricity_meter.active %}
+                                        <a class="btn btn-outline-primary" href="{{ path('app_admin_electricity_meter_reading_new', {'meterUuid': electricity_meter.uuid}) }}">Показание</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-secondary py-4">Электросчетчики для участка пока не созданы.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Начисления</h2>
+                    <p class="text-secondary mb-0">История ручных и расчетных начислений участка.</p>
+                </div>
+                <a class="btn btn-sm btn-primary" href="{{ path('app_admin_accrual_new', {'accountUuid': account.uuid}) }}">Внести начисление</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Период</th>
+                            <th>Тип</th>
+                            <th>Сумма</th>
+                            <th>Комментарий</th>
+                            <th>Статус</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for accrual in accruals %}
+                        <tr>
+                            <td>{{ accrual.periodStart|date('d.m.Y') }} - {{ accrual.periodEnd|date('d.m.Y') }}</td>
+                            <td>{{ accrual.type.label }}</td>
+                            <td>{{ accrual.amount|number_format(2, ',', ' ') }} руб.</td>
+                            <td class="text-secondary">{{ accrual.notes ?: '—' }}</td>
+                            <td>
+                                {% if accrual.cancelledAt %}
+                                    <span class="badge text-bg-danger">Отменено</span>
+                                {% elseif accrual.replacingAccrual %}
+                                    <span class="badge text-bg-secondary">Заменено</span>
+                                {% elseif accrual.postedAt %}
+                                    <span class="badge text-bg-success">Проведено</span>
+                                {% else %}
+                                    <span class="badge text-bg-light border">Черновик</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_accrual_show', {'uuid': accrual.uuid}) }}">Открыть</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-secondary py-4">Начисления пока не внесены.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Оплаты</h2>
+                    <p class="text-secondary mb-0">История ручных и импортированных оплат участка.</p>
+                </div>
+                <a class="btn btn-sm btn-primary" href="{{ path('app_admin_payment_new', {'accountUuid': account.uuid}) }}">Внести оплату</a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Сумма</th>
+                            <th>Плательщик</th>
+                            <th>Назначение</th>
+                            <th>Статус</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.paidOn|date('d.m.Y') }}</td>
+                            <td>{{ payment.amount|number_format(2, ',', ' ') }} руб.</td>
+                            <td>{{ payment.payerName ?: '—' }}</td>
+                            <td class="text-secondary">{{ payment.purpose ?: '—' }}</td>
+                            <td>
+                                {% if payment.cancelledAt %}
+                                    <span class="badge text-bg-danger">Отменено</span>
+                                {% elseif payment.replacingPayment %}
+                                    <span class="badge text-bg-secondary">Заменено</span>
+                                {% else %}
+                                    <span class="badge text-bg-success">Активно</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_payment_show', {'uuid': payment.uuid}) }}">Открыть</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-secondary py-4">Оплаты пока не внесены.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Тарифные профили</h2>
+                    <p class="text-secondary mb-0">История применения тарифных профилей к этому участку.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Профиль</th>
+                            <th>Действует с</th>
+                            <th>Действует до</th>
+                            <th>Назначен</th>
+                            <th>Заметки</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for assignment in tariff_profile_assignments %}
+                        <tr>
+                            <td>
+                                <span class="fw-semibold">{{ assignment.tariffProfile.name }}</span>
+                                <code class="ms-1">{{ assignment.tariffProfile.code }}</code>
+                                {% if assignment.validTo is null %}
+                                    <span class="badge text-bg-success ms-2">Текущий</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ assignment.validFrom|date('d.m.Y') }}</td>
+                            <td>{{ assignment.validTo ? assignment.validTo|date('d.m.Y') : '—' }}</td>
+                            <td>{{ assignment.assignedAt|workspace_datetime }}</td>
+                            <td class="text-secondary">{{ assignment.notes ?: '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Тарифный профиль участку пока не назначен.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Назначить тарифный профиль</h2>
+
+            {% if tariff_profile_assign_form.tariffProfile.vars.choices|length > 0 %}
+                {{ form_start(tariff_profile_assign_form) }}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            {{ form_row(tariff_profile_assign_form.tariffProfile) }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form_row(tariff_profile_assign_form.validFrom) }}
+                        </div>
+                        <div class="col-md-5">
+                            {{ form_row(tariff_profile_assign_form.notes) }}
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary">Назначить профиль</button>
+                {{ form_end(tariff_profile_assign_form) }}
+            {% else %}
+                <p class="text-secondary mb-0">Сначала нужно создать хотя бы один активный тарифный профиль.</p>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Абоненты</h2>
+                    <p class="text-secondary mb-0">Активные абоненты, которым выдан доступ к этому участку.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Абонент</th>
+                            <th>Роль</th>
+                            <th>Выдан</th>
+                            <th>Заметки</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for access in active_accesses %}
+                        <tr>
+                            <td>
+                                <a class="fw-semibold" href="{{ path('app_admin_subscriber_show', {'uuid': access.subscriber.uuid}) }}">{{ access.subscriber.displayName }}</a>
+                            </td>
+                            <td>{{ access.accessRole.label }}</td>
+                            <td>{{ access.grantedAt|workspace_datetime }}</td>
+                            <td class="text-secondary">{{ access.notes ?: '—' }}</td>
+                            <td class="text-end">
+                                <form method="post" action="{{ path('app_admin_account_access_revoke', {'uuid': account.uuid, 'subscriberUuid': access.subscriber.uuid}) }}" onsubmit="return confirm('Отозвать доступ абонента {{ access.subscriber.displayName|e('js') }}?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('revoke_account_access' ~ account.uuid ~ access.subscriber.uuid) }}">
+                                    <button class="btn btn-outline-danger btn-sm">Отозвать</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Абоненты к участку пока не привязаны.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Добавить абонента</h2>
+
+            {% if access_grant_form.subscriber.vars.choices|length > 0 %}
+                {{ form_start(access_grant_form) }}
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            {{ form_row(access_grant_form.subscriber) }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form_row(access_grant_form.accessRole) }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form_row(access_grant_form.notes) }}
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary">Добавить абонента</button>
+                {{ form_end(access_grant_form) }}
+            {% else %}
+                <p class="text-secondary mb-0">Нет активных абонентов без доступа к этому участку.</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

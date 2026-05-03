@@ -1,0 +1,51 @@
+{% extends 'subscriber_portal/base.html.twig' %}
+
+{% block title %}Передать показания · КомУчёт{% endblock %}
+
+{% block portal_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Передать показания</h1>
+            <div class="text-secondary">
+                Участок {{ account.number }}, счетчик {{ electricity_meter.serialNumber ?: 'серийный номер не указан' }}
+            </div>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}">К участку</a>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ form_start(form) }}
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        {{ form_row(form.takenOn) }}
+                    </div>
+
+                    {% for tariff_zone in tariff_zones %}
+                        {% set field_name = 'reading_' ~ tariff_zone.uuid.toRfc4122()|replace({'-': '_'}) %}
+                        {% set latest_reading = latest_readings_by_zone_uuid[tariff_zone.uuid.toRfc4122()] ?? null %}
+                        <div class="col-12 col-md-4">
+                            {{ form_row(attribute(form, field_name)) }}
+                            <div class="form-text">
+                                {% if latest_reading %}
+                                    Последнее: {{ latest_reading.readingValue|number_format(3, ',', ' ') }} кВт⋅ч от {{ latest_reading.takenOn|date('d.m.Y') }}.
+                                {% else %}
+                                    Предыдущих показаний нет.
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                    <div class="col-12">
+                        {{ form_row(form.notes) }}
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary">Сохранить</button>
+                    <a class="btn btn-outline-secondary" href="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}">Отмена</a>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    </section>
+{% endblock %}

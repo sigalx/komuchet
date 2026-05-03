@@ -1,0 +1,48 @@
+# Symfony / PHP
+/vendor/
+/var/
+/.env.local.php
+/.env.*.local
+*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+
+# Composer
+/composer.phar
+
+# Node / frontend tooling
+/node_modules/
+/npm-debug.log
+/yarn-error.log
+/test-results/
+/playwright-report/
+/blob-report/
+
+# IDE / OS
+/.idea/
+/.vscode/
+*.swp
+*~
+*.Zone.Identifier
+*:Zone.Identifier
+
+# Local runtime
+/docker-data/
+/local/
+
+# Local planning / task notes
+/docs/admin-backlog.md
+/docs/next-steps.md
+/docs/open-questions.md
+/docs/github-ghcr-smoke.md
+/docs/demo-seed-smoke.md
+
+###> symfony/asset-mapper ###
+/public/assets/
+/assets/vendor/
+###< symfony/asset-mapper ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

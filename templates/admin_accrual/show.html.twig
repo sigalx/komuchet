@@ -1,0 +1,178 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Начисление{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Начисление</h1>
+            <p class="text-secondary mb-0">Участок {{ accrual.account.number }}, {{ accrual.amount|number_format(2, ',', ' ') }} руб.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_show', {'uuid': accrual.account.uuid}) }}">К участку</a>
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_accrual_index') }}">К списку</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Участок</dt>
+                <dd class="col-sm-9">
+                    <a href="{{ path('app_admin_account_show', {'uuid': accrual.account.uuid}) }}">{{ accrual.account.number }}</a>
+                </dd>
+
+                <dt class="col-sm-3">Тип</dt>
+                <dd class="col-sm-9">{{ accrual.type.label }}</dd>
+
+                <dt class="col-sm-3">Период</dt>
+                <dd class="col-sm-9">{{ accrual.periodStart|date('d.m.Y') }} - {{ accrual.periodEnd|date('d.m.Y') }}</dd>
+
+                <dt class="col-sm-3">Сумма</dt>
+                <dd class="col-sm-9">{{ accrual.amount|number_format(2, ',', ' ') }} руб.</dd>
+
+                <dt class="col-sm-3">Статус</dt>
+                <dd class="col-sm-9">
+                    {% if accrual.cancelledAt %}
+                        <span class="badge text-bg-danger">Отменено</span>
+                    {% elseif accrual.replacingAccrual %}
+                        <span class="badge text-bg-secondary">Заменено</span>
+                    {% elseif accrual.postedAt %}
+                                <span class="badge text-bg-success">Проведено</span>
+                    {% else %}
+                        <span class="badge text-bg-light border">Черновик</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3">Комментарий</dt>
+                <dd class="col-sm-9">{{ accrual.notes ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Рассчитано</dt>
+                <dd class="col-sm-9">{{ accrual.calculatedAt|workspace_datetime }}</dd>
+
+                {% if accrual.postedAt %}
+                    <dt class="col-sm-3">Проведено</dt>
+                    <dd class="col-sm-9">{{ accrual.postedAt|workspace_datetime }}</dd>
+                {% endif %}
+
+                <dt class="col-sm-3">Создано</dt>
+                <dd class="col-sm-9">{{ accrual.createdAt|workspace_datetime }}</dd>
+
+                {% if accrual.cancelledAt %}
+                    <dt class="col-sm-3">Отменено</dt>
+                    <dd class="col-sm-9">{{ accrual.cancelledAt|workspace_datetime }}</dd>
+
+                    <dt class="col-sm-3">Причина отмены</dt>
+                    <dd class="col-sm-9">{{ accrual.cancellationReason ?: '—' }}</dd>
+                {% endif %}
+
+                {% if accrual.replacingAccrual %}
+                    <dt class="col-sm-3">Заменено</dt>
+                    <dd class="col-sm-9">{{ accrual.replacedAt|workspace_datetime }}</dd>
+
+                    <dt class="col-sm-3">Причина замены</dt>
+                    <dd class="col-sm-9">{{ accrual.replacementReason ?: '—' }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+    </section>
+
+    {% if electricity_context %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Контекст электроэнергии</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Счетчик</dt>
+                    <dd class="col-sm-9">{{ electricity_context.electricityMeter.serialNumber ?: 'серийный номер не указан' }}</dd>
+
+                    <dt class="col-sm-3">Тарифный профиль</dt>
+                    <dd class="col-sm-9">{{ electricity_context.tariffProfile.name }}</dd>
+
+                    <dt class="col-sm-3">Тарифный период</dt>
+                    <dd class="col-sm-9">{{ electricity_context.tariffPeriod.validFrom|date('d.m.Y') }} - {{ electricity_context.tariffPeriod.validTo ? electricity_context.tariffPeriod.validTo|date('d.m.Y') : 'без ограничения' }}</dd>
+
+                    <dt class="col-sm-3">Правило нормы</dt>
+                    <dd class="col-sm-9">{{ '%02d'|format(electricity_context.consumptionBandRule.month) }}.{{ electricity_context.consumptionBandRule.validFrom|date('Y') }}</dd>
+                </dl>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if electricity_registers is not empty %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Показания</h2>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Зона</th>
+                                <th>Предыдущее</th>
+                                <th>Текущее</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for register in electricity_registers %}
+                                <tr>
+                                    <td>{{ register.tariffZone.name }}</td>
+                                    <td>
+                                        {% if register.previousReading %}
+                                            {{ register.previousReading.readingValue|number_format(3, ',', ' ') }} кВт*ч, {{ register.previousReading.takenOn|date('d.m.Y') }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ register.currentReading.readingValue|number_format(3, ',', ' ') }} кВт*ч, {{ register.currentReading.takenOn|date('d.m.Y') }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if electricity_lines is not empty %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Строки расчета</h2>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Зона</th>
+                                <th>Диапазон</th>
+                                <th>Расход</th>
+                                <th>Ставка</th>
+                                <th>Сумма</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in electricity_lines %}
+                                <tr>
+                                    <td>{{ line.tariffZone.name }}</td>
+                                    <td>{{ line.consumptionBand.name }}</td>
+                                    <td>{{ line.consumptionKwh|number_format(3, ',', ' ') }} кВт*ч</td>
+                                    <td>{{ line.rate|number_format(6, ',', ' ') }} руб.</td>
+                                    <td>{{ line.amount|number_format(2, ',', ' ') }} руб.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if accrual.activePosted %}
+        <section class="card mt-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Отменить начисление</h2>
+                {{ form_start(cancel_form) }}
+                    {{ form_row(cancel_form.reason) }}
+                    <button class="btn btn-outline-danger">Отменить</button>
+                {{ form_end(cancel_form) }}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

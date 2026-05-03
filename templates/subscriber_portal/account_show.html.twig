@@ -1,0 +1,375 @@
+{% extends 'subscriber_portal/base.html.twig' %}
+
+{% block title %}Участок {{ account.number }} · КомУчёт{% endblock %}
+
+{% block portal_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Участок {{ account.number }}</h1>
+            <div class="text-secondary">{{ current_workspace.name }}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="{{ path('app_subscriber_portal_account_balance', {'uuid': account.uuid}) }}">Баланс и операции</a>
+            {% if active_meter %}
+                <a class="btn btn-primary" href="{{ path('app_subscriber_portal_account_reading_new', {'uuid': account.uuid}) }}">Передать показания</a>
+            {% endif %}
+            <a class="btn btn-outline-secondary" href="{{ path('app_subscriber_portal') }}">К списку</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Баланс</h2>
+
+                    {% if balance %}
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Начислено</dt>
+                            <dd class="col-sm-8">{{ balance.activeAccrualTotal|number_format(2, ',', ' ') }} руб.</dd>
+
+                            <dt class="col-sm-4">Оплачено</dt>
+                            <dd class="col-sm-8">{{ balance.activePaymentTotal|number_format(2, ',', ' ') }} руб.</dd>
+
+                            <dt class="col-sm-4">Баланс</dt>
+                            <dd class="col-sm-8">
+                                <span class="fw-semibold">{{ balance.balanceAmount|number_format(2, ',', ' ') }} руб.</span>
+                                {% if balance.state == 'debt' %}
+                                    <span class="badge text-bg-warning ms-2">К оплате</span>
+                                {% elseif balance.state == 'overpayment' %}
+                                    <span class="badge text-bg-info ms-2">Переплата</span>
+                                {% else %}
+                                    <span class="badge text-bg-success ms-2">Закрыто</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    {% else %}
+                        <p class="text-secondary mb-0">Баланс пока не рассчитан.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Активный электросчетчик</h2>
+
+                    {% if active_meter %}
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Серийный номер</dt>
+                            <dd class="col-sm-8">{{ active_meter.serialNumber ?: '—' }}</dd>
+
+                            <dt class="col-sm-4">Модель</dt>
+                            <dd class="col-sm-8">{{ active_meter.model ?: '—' }}</dd>
+
+                            <dt class="col-sm-4">Дата установки</dt>
+                            <dd class="col-sm-8">{{ active_meter.installedOn|date('d.m.Y') }}</dd>
+
+                            <dt class="col-sm-4">Дата поверки</dt>
+                            <dd class="col-sm-8">{{ active_meter.verifiedOn ? active_meter.verifiedOn|date('d.m.Y') : '—' }}</dd>
+
+                            <dt class="col-sm-4">Поверка действует до</dt>
+                            <dd class="col-sm-8">{{ active_meter.verificationValidUntil ? active_meter.verificationValidUntil|date('d.m.Y') : '—' }}</dd>
+                        </dl>
+                    {% else %}
+                        <p class="text-secondary mb-0">Активный электросчетчик не найден.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <section id="statements" class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Квитанции</h2>
+
+            {% if statements is empty %}
+                {% if balance and balance.state == 'debt' %}
+                    <p class="text-secondary mb-0">
+                        Есть задолженность {{ balance.debtAmount|number_format(2, ',', ' ') }} руб., но квитанция для оплаты еще не сформирована.
+                    </p>
+                {% else %}
+                    <p class="text-secondary mb-0">Квитанции пока не сформированы.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        {% if statements is not empty %}
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Квитанция</th>
+                            <th>Дата</th>
+                            <th>Сформирована</th>
+                            <th class="text-end">Баланс</th>
+                            <th class="text-end">К оплате</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for statement in statements %}
+                        <tr>
+                            <td>
+                                <a class="fw-semibold" href="{{ path('app_subscriber_portal_account_statement_snapshot_show', {'uuid': account.uuid, 'statementUuid': statement.uuid}) }}">
+                                    {{ statement.number }}
+                                </a>
+                            </td>
+                            <td>{{ statement.statementDate|date('d.m.Y') }}</td>
+                            <td>{{ statement.generatedAt|date('d.m.Y H:i') }}</td>
+                            <td class="text-end">{{ statement.balanceAmount|number_format(2, ',', ' ') }} руб.</td>
+                            <td class="text-end fw-semibold">{{ statement.amountToPay|number_format(2, ',', ' ') }} руб.</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex flex-wrap justify-content-end gap-2">
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_subscriber_portal_account_statement_snapshot_show', {'uuid': account.uuid, 'statementUuid': statement.uuid}) }}">Открыть</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ path('app_subscriber_portal_account_statement_snapshot_pdf', {'uuid': account.uuid, 'statementUuid': statement.uuid}) }}">PDF</a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </section>
+
+    <section id="readings" class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Показания электросчетчиков</h2>
+
+            <form method="get" action="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}#readings" class="row g-3 align-items-end">
+                <div class="col-12 col-lg-3">
+                    <label for="portal-readings-status-filter" class="form-label">Статус</label>
+                    <select id="portal-readings-status-filter" class="form-select" name="readings_status">
+                        <option value="all" {{ filters.readings.status == 'all' ? 'selected' }}>Все показания</option>
+                        <option value="active" {{ filters.readings.status == 'active' ? 'selected' }}>Активные</option>
+                        <option value="cancelled" {{ filters.readings.status == 'cancelled' ? 'selected' }}>Отмененные</option>
+                        <option value="superseded" {{ filters.readings.status == 'superseded' ? 'selected' }}>Замененные</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="portal-readings-from-filter" class="form-label">С даты</label>
+                    <input id="portal-readings-from-filter" class="form-control js-date-picker" type="text" name="readings_taken_on_from" value="{{ filters.readings.taken_on_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="portal-readings-to-filter" class="form-label">По дату</label>
+                    <input id="portal-readings-to-filter" class="form-control js-date-picker" type="text" name="readings_taken_on_to" value="{{ filters.readings.taken_on_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}#readings">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Дата снятия</th>
+                        <th>Счетчик</th>
+                        <th>Зона</th>
+                        <th>Показание</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for reading in readings %}
+                    <tr>
+                        <td>{{ reading.takenOn|date('d.m.Y') }}</td>
+                        <td>{{ reading.electricityMeter.serialNumber ?: 'серийный номер не указан' }}</td>
+                        <td>{{ reading.tariffZone.name }}</td>
+                        <td>{{ reading.readingValue|number_format(3, ',', ' ') }}</td>
+                        <td>
+                            {% if reading.cancelledAt %}
+                                <span class="badge text-bg-danger">Отменено</span>
+                            {% elseif reading.replacingReading %}
+                                <span class="badge text-bg-secondary">Заменено</span>
+                            {% else %}
+                                <span class="badge text-bg-success">Активно</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">
+                            {% if filters.readings.status != 'all' or filters.readings.taken_on_from or filters.readings.taken_on_to %}
+                                Показания не найдены.
+                            {% else %}
+                                Показания пока не внесены.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('subscriber_portal/_pagination.html.twig', {pagination: readings_pagination, page_param: 'readings_page', anchor: 'readings'}) }}
+    </section>
+
+    <section id="accruals" class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Начисления</h2>
+
+            <form method="get" action="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}#accruals" class="row g-3 align-items-end">
+                <div class="col-12 col-lg-3">
+                    <label for="portal-accruals-status-filter" class="form-label">Статус</label>
+                    <select id="portal-accruals-status-filter" class="form-select" name="accruals_status">
+                        <option value="all" {{ filters.accruals.status == 'all' ? 'selected' }}>Все проведенные</option>
+                        <option value="active" {{ filters.accruals.status == 'active' ? 'selected' }}>Активные</option>
+                        <option value="cancelled" {{ filters.accruals.status == 'cancelled' ? 'selected' }}>Отмененные</option>
+                        <option value="superseded" {{ filters.accruals.status == 'superseded' ? 'selected' }}>Замененные</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="portal-accruals-from-filter" class="form-label">Период с</label>
+                    <input id="portal-accruals-from-filter" class="form-control js-date-picker" type="text" name="accruals_period_start_from" value="{{ filters.accruals.period_start_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="portal-accruals-to-filter" class="form-label">Период по</label>
+                    <input id="portal-accruals-to-filter" class="form-control js-date-picker" type="text" name="accruals_period_start_to" value="{{ filters.accruals.period_start_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}#accruals">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Период</th>
+                        <th>Тип</th>
+                        <th class="text-end">Сумма</th>
+                        <th>Комментарий</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for accrual in accruals %}
+                    <tr>
+                        <td>{{ accrual.periodStart|date('d.m.Y') }} - {{ accrual.periodEnd|date('d.m.Y') }}</td>
+                        <td>{{ accrual.type.label }}</td>
+                        <td class="text-end">{{ accrual.amount|number_format(2, ',', ' ') }} руб.</td>
+                        <td class="text-secondary">{{ accrual.notes ?: '—' }}</td>
+                        <td>
+                            {% if accrual.cancelledAt %}
+                                <span class="badge text-bg-danger">Отменено</span>
+                            {% elseif accrual.replacingAccrual %}
+                                <span class="badge text-bg-secondary">Заменено</span>
+                            {% else %}
+                                <span class="badge text-bg-success">Проведено</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">
+                            {% if filters.accruals.status != 'all' or filters.accruals.period_start_from or filters.accruals.period_start_to %}
+                                Начисления не найдены.
+                            {% else %}
+                                Начисления пока не внесены.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('subscriber_portal/_pagination.html.twig', {pagination: accruals_pagination, page_param: 'accruals_page', anchor: 'accruals'}) }}
+    </section>
+
+    <section id="payments" class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Оплаты</h2>
+
+            <form method="get" action="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}#payments" class="row g-3 align-items-end">
+                <div class="col-12 col-lg-3">
+                    <label for="portal-payments-status-filter" class="form-label">Статус</label>
+                    <select id="portal-payments-status-filter" class="form-select" name="payments_status">
+                        <option value="all" {{ filters.payments.status == 'all' ? 'selected' }}>Все оплаты</option>
+                        <option value="active" {{ filters.payments.status == 'active' ? 'selected' }}>Активные</option>
+                        <option value="cancelled" {{ filters.payments.status == 'cancelled' ? 'selected' }}>Отмененные</option>
+                        <option value="superseded" {{ filters.payments.status == 'superseded' ? 'selected' }}>Замененные</option>
+                    </select>
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="portal-payments-from-filter" class="form-label">С даты</label>
+                    <input id="portal-payments-from-filter" class="form-control js-date-picker" type="text" name="payments_paid_on_from" value="{{ filters.payments.paid_on_from }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <label for="portal-payments-to-filter" class="form-label">По дату</label>
+                    <input id="portal-payments-to-filter" class="form-control js-date-picker" type="text" name="payments_paid_on_to" value="{{ filters.payments.paid_on_to }}" placeholder="дд.мм.гггг" autocomplete="off">
+                </div>
+
+                <div class="col-12 col-lg-3">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary flex-fill">Применить</button>
+                        <a class="btn btn-outline-secondary" href="{{ path('app_subscriber_portal_account_show', {'uuid': account.uuid}) }}#payments">Сбросить</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th class="text-end">Сумма</th>
+                        <th>Плательщик</th>
+                        <th>Назначение</th>
+                        <th>Источник</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for payment in payments %}
+                    <tr>
+                        <td>{{ payment.paidOn|date('d.m.Y') }}</td>
+                        <td class="text-end">{{ payment.amount|number_format(2, ',', ' ') }} руб.</td>
+                        <td>{{ payment.payerName ?: '—' }}</td>
+                        <td class="text-secondary">{{ payment.purpose ?: '—' }}</td>
+                        <td>{{ payment.source.value == 'import' ? 'Импорт' : 'Ручной ввод' }}</td>
+                        <td>
+                            {% if payment.cancelledAt %}
+                                <span class="badge text-bg-danger">Отменено</span>
+                            {% elseif payment.replacingPayment %}
+                                <span class="badge text-bg-secondary">Заменено</span>
+                            {% else %}
+                                <span class="badge text-bg-success">Активно</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-4">
+                            {% if filters.payments.status != 'all' or filters.payments.paid_on_from or filters.payments.paid_on_to %}
+                                Оплаты не найдены.
+                            {% else %}
+                                Оплаты пока не внесены.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('subscriber_portal/_pagination.html.twig', {pagination: payments_pagination, page_param: 'payments_page', anchor: 'payments'}) }}
+    </section>
+{% endblock %}

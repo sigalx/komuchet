@@ -1,0 +1,4 @@
+<form method="post" action="{{ path('app_admin_electricity_tariff_period_delete', {'uuid': electricity_tariff_period.uuid}) }}" onsubmit="return confirm('Удалить тарифный период?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ electricity_tariff_period.uuid) }}">
+    <button class="btn btn-outline-danger">Удалить</button>
+</form>

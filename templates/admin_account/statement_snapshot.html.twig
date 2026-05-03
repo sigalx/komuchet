@@ -1,0 +1,19 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Квитанция № {{ statement.number }}{% endblock %}
+
+{% block admin_body %}
+    {{ include('account_statement/_snapshot_content.html.twig', {
+        statement: statement,
+        accruals: accruals,
+        electricity_registers: electricity_registers,
+        electricity_lines: electricity_lines,
+        payments: payments,
+        deliveries: deliveries,
+        delivery_enqueue_url: path('app_admin_account_statement_delivery_enqueue', {'uuid': statement.account.uuid, 'statementUuid': statement.uuid}),
+        pdf_url: path('app_admin_account_statement_snapshot_pdf', {'uuid': statement.account.uuid, 'statementUuid': statement.uuid}),
+        print_url: path('app_admin_account_statement_snapshot_print', {'uuid': statement.account.uuid, 'statementUuid': statement.uuid}),
+        back_url: path('app_admin_account_show', {'uuid': statement.account.uuid}),
+        back_label: 'К участку',
+    }) }}
+{% endblock %}

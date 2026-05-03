@@ -1,0 +1,66 @@
+{% extends 'admin/base.html.twig' %}
+
+{% set month_names = {
+    1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель', 5: 'Май', 6: 'Июнь',
+    7: 'Июль', 8: 'Август', 9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+} %}
+
+{% block title %}Правила Диапазонов Потребления{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Правила диапазонов потребления</h1>
+            <p class="text-secondary mb-0">Социальные нормы и другие месячные правила распределения потребления по диапазонам.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ path('app_admin_electricity_consumption_band_rule_new') }}">Создать правило</a>
+    </div>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'tariff_profile', label: 'Профиль', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'month', label: 'Месяц', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'valid_from', label: 'Период', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'priority', label: 'Приоритет', sort: sort}) }}</th>
+                        <th>Распределение</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for rule in electricity_consumption_band_rules %}
+                    <tr>
+                        <td>
+                            <code>{{ rule.tariffProfile.code }}</code>
+                            <span class="ms-1">{{ rule.tariffProfile.name }}</span>
+                        </td>
+                        <td>{{ month_names[rule.month] }}</td>
+                        <td>{{ rule.validFrom|date('d.m.Y') }} - {{ rule.validTo ? rule.validTo|date('d.m.Y') : 'бессрочно' }}</td>
+                        <td>{{ rule.priority }}</td>
+                        <td>
+                            {% if rule.allocationMethod.value == 'total_proportional' %}
+                                Общее потребление
+                            {% else %}
+                                По зонам отдельно
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_consumption_band_rule_show', {'uuid': rule.uuid}) }}">Открыть</a>
+                                <a class="btn btn-outline-primary" href="{{ path('app_admin_electricity_consumption_band_rule_edit', {'uuid': rule.uuid}) }}">Изменить</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-5">Правила диапазонов потребления пока не созданы.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

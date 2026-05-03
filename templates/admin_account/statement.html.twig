@@ -1,0 +1,14 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Квитанция по участку {{ statement.account.number }}{% endblock %}
+
+{% block admin_body %}
+    {{ include('account_statement/_content.html.twig', {
+        statement: statement,
+        statement_snapshots: statement_snapshots,
+        back_url: path('app_admin_account_show', {'uuid': statement.account.uuid}),
+        back_label: 'К участку',
+        snapshot_create_url: path('app_admin_account_statement_snapshot_create', {'uuid': statement.account.uuid}),
+        snapshot_create_token_id: 'create_statement_snapshot' ~ statement.account.uuid,
+    }) }}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Хозяйство {{ workspace.code }}{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Хозяйство {{ workspace.code }}</h1>
+            <p class="text-secondary mb-0">{{ workspace.name }}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary" href="{{ path('app_admin_workspace_index') }}">К списку</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_workspace_edit', {'uuid': workspace.uuid}) }}">Изменить</a>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Код</dt>
+                <dd class="col-sm-9"><code>{{ workspace.code }}</code></dd>
+
+                <dt class="col-sm-3">Название</dt>
+                <dd class="col-sm-9">{{ workspace.name }}</dd>
+
+                <dt class="col-sm-3">Описание</dt>
+                <dd class="col-sm-9">{{ workspace.description ?: '—' }}</dd>
+
+                <dt class="col-sm-3">Часовой пояс</dt>
+                <dd class="col-sm-9">{{ workspace.timezone|russian_timezone_label }}</dd>
+
+                <dt class="col-sm-3">Создан</dt>
+                <dd class="col-sm-9">{{ workspace.createdAt|workspace_datetime }}</dd>
+
+                <dt class="col-sm-3">Обновлен</dt>
+                <dd class="col-sm-9">{{ workspace.updatedAt|workspace_datetime }}</dd>
+            </dl>
+        </div>
+    </section>
+{% endblock %}

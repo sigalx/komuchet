@@ -1,0 +1,25 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Редактирование Тарифного Периода{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Редактирование тарифного периода</h1>
+            <p class="text-secondary mb-0">Профиль: {{ electricity_tariff_profile.name }}</p>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_electricity_tariff_period_show', {'uuid': electricity_tariff_period.uuid}) }}">К периоду</a>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_electricity_tariff_period/_form.html.twig', {
+                button_label: 'Сохранить',
+                cancel_path: path('app_admin_electricity_tariff_period_show', {'uuid': electricity_tariff_period.uuid}),
+            }) }}
+        </div>
+        <div class="card-footer bg-white">
+            {{ include('admin_electricity_tariff_period/_delete_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

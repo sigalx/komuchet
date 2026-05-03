@@ -1,0 +1,244 @@
+<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-1">{{ heading|default('Квитанция по участку ' ~ statement.account.number) }}</h1>
+        <p class="text-secondary mb-0">{{ statement.workspace.name }} · {{ statement.statementDate|date('d.m.Y') }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% if snapshot_create_url is defined %}
+            <form method="post" action="{{ snapshot_create_url }}">
+                <input type="hidden" name="_token" value="{{ csrf_token(snapshot_create_token_id) }}">
+                <button class="btn btn-primary">Зафиксировать квитанцию</button>
+            </form>
+        {% endif %}
+        <a class="btn btn-outline-secondary" href="{{ back_url }}">{{ back_label }}</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-7">
+        <section class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Итог</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Начислено</dt>
+                    <dd class="col-sm-7">{{ statement.balance.activeAccrualTotal|number_format(2, ',', ' ') }} руб.</dd>
+
+                    <dt class="col-sm-5">Оплачено</dt>
+                    <dd class="col-sm-7">{{ statement.balance.activePaymentTotal|number_format(2, ',', ' ') }} руб.</dd>
+
+                    <dt class="col-sm-5">Баланс</dt>
+                    <dd class="col-sm-7">
+                        <span class="fw-semibold">{{ statement.balance.balanceAmount|number_format(2, ',', ' ') }} руб.</span>
+                        {% if statement.hasDebt %}
+                            <span class="badge text-bg-warning ms-2">К оплате</span>
+                        {% elseif statement.hasOverpayment %}
+                            <span class="badge text-bg-info ms-2">Переплата</span>
+                        {% else %}
+                            <span class="badge text-bg-success ms-2">Закрыто</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-5">Сумма к оплате</dt>
+                    <dd class="col-sm-7 display-6 mb-0">{{ statement.amountToPay|number_format(2, ',', ' ') }} руб.</dd>
+                </dl>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-12 col-xl-5">
+        <section class="card h-100">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Реквизиты</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Хозяйство</dt>
+                    <dd class="col-sm-7">{{ statement.workspace.name }}</dd>
+
+                    <dt class="col-sm-5">Участок</dt>
+                    <dd class="col-sm-7">{{ statement.account.number }}</dd>
+
+                    <dt class="col-sm-5">Дата</dt>
+                    <dd class="col-sm-7">{{ statement.statementDate|date('d.m.Y') }}</dd>
+                </dl>
+            </div>
+        </section>
+    </div>
+</div>
+
+<section class="card mt-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Начисления</h2>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Период</th>
+                    <th>Тип</th>
+                    <th>Комментарий</th>
+                    <th class="text-end">Сумма</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in statement.accrualRows %}
+                {% set accrual = row.accrual %}
+                <tr>
+                    <td>{{ accrual.periodStart|date('d.m.Y') }} - {{ accrual.periodEnd|date('d.m.Y') }}</td>
+                    <td>{{ accrual.type.label }}</td>
+                    <td class="text-secondary">{{ accrual.notes ?: '—' }}</td>
+                    <td class="text-end">{{ accrual.amount|number_format(2, ',', ' ') }} руб.</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-4">Начисления отсутствуют.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% if statement.hasElectricityDetails %}
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Расчет электроэнергии</h2>
+
+            {% for row in statement.accrualRows %}
+                {% if row.electricityRegisters is not empty or row.electricityLines is not empty %}
+                    <div class="{{ loop.first ? '' : 'border-top pt-4 mt-4' }}">
+                        <h3 class="h6 mb-3">{{ row.accrual.periodStart|date('d.m.Y') }} - {{ row.accrual.periodEnd|date('d.m.Y') }}</h3>
+
+                        {% if row.electricityRegisters is not empty %}
+                            <div class="table-responsive mb-3">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Зона</th>
+                                            <th>Предыдущее</th>
+                                            <th>Текущее</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for register in row.electricityRegisters %}
+                                        <tr>
+                                            <td>{{ register.tariffZone.name }}</td>
+                                            <td>
+                                                {% if register.previousReading %}
+                                                    {{ register.previousReading.readingValue|number_format(3, ',', ' ') }} кВт⋅ч, {{ register.previousReading.takenOn|date('d.m.Y') }}
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ register.currentReading.readingValue|number_format(3, ',', ' ') }} кВт⋅ч, {{ register.currentReading.takenOn|date('d.m.Y') }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+
+                        {% if row.electricityLines is not empty %}
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Зона</th>
+                                            <th>Диапазон</th>
+                                            <th>Расход</th>
+                                            <th>Ставка</th>
+                                            <th class="text-end">Сумма</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for line in row.electricityLines %}
+                                        <tr>
+                                            <td>{{ line.tariffZone.name }}</td>
+                                            <td>{{ line.consumptionBand.name }}</td>
+                                            <td>{{ line.consumptionKwh|number_format(3, ',', ' ') }} кВт⋅ч</td>
+                                            <td>{{ line.rate|number_format(6, ',', ' ') }} руб.</td>
+                                            <td class="text-end">{{ line.amount|number_format(2, ',', ' ') }} руб.</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+
+<section class="card mt-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Оплаты</h2>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Плательщик</th>
+                    <th>Назначение</th>
+                    <th class="text-end">Сумма</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in statement.paymentRows %}
+                {% set payment = row.payment %}
+                <tr>
+                    <td>{{ payment.paidOn|date('d.m.Y') }}</td>
+                    <td>{{ payment.payerName ?: '—' }}</td>
+                    <td class="text-secondary">{{ payment.purpose ?: '—' }}</td>
+                    <td class="text-end">{{ payment.amount|number_format(2, ',', ' ') }} руб.</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-4">Оплаты отсутствуют.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% if statement_snapshots is defined %}
+    <section class="card mt-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Сохраненные квитанции</h2>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Номер</th>
+                        <th>Дата</th>
+                        <th>Сформирована</th>
+                        <th class="text-end">Сумма к оплате</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for snapshot in statement_snapshots %}
+                    <tr>
+                        <td>{{ snapshot.number }}</td>
+                        <td>{{ snapshot.statementDate|date('d.m.Y') }}</td>
+                        <td>{{ snapshot.generatedAt|workspace_datetime }}</td>
+                        <td class="text-end">{{ snapshot.amountToPay|number_format(2, ',', ' ') }} руб.</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_account_statement_snapshot_show', {'uuid': statement.account.uuid, 'statementUuid': snapshot.uuid}) }}">Открыть</a>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">Сохраненные квитанции пока не сформированы.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}

@@ -1,0 +1,17 @@
+{% extends 'subscriber_portal/base.html.twig' %}
+
+{% block title %}Квитанция № {{ statement.number }} · КомУчёт{% endblock %}
+
+{% block portal_body %}
+    {{ include('account_statement/_snapshot_content.html.twig', {
+        statement: statement,
+        accruals: accruals,
+        electricity_registers: electricity_registers,
+        electricity_lines: electricity_lines,
+        payments: payments,
+        payment_qr_code: payment_qr_code,
+        pdf_url: path('app_subscriber_portal_account_statement_snapshot_pdf', {'uuid': statement.account.uuid, 'statementUuid': statement.uuid}),
+        back_url: path('app_subscriber_portal_account_show', {'uuid': statement.account.uuid}),
+        back_label: 'К участку',
+    }) }}
+{% endblock %}

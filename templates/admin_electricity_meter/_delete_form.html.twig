@@ -1,0 +1,4 @@
+<form method="post" action="{{ path('app_admin_electricity_meter_delete', {'uuid': electricity_meter.uuid}) }}" onsubmit="return confirm('Удалить электросчетчик?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ electricity_meter.uuid) }}">
+    <button class="btn btn-outline-danger">Удалить</button>
+</form>

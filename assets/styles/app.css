@@ -1,0 +1,343 @@
+:root {
+    color-scheme: light;
+    --snt-sidebar-bg: #17202a;
+    --snt-sidebar-active: #243447;
+    --snt-sidebar-text: #d7dee8;
+    --snt-sidebar-muted: #8f9cad;
+    --snt-page-bg: #f5f7fa;
+}
+
+body {
+    min-height: 100vh;
+    background: var(--snt-page-bg);
+}
+
+.auth-page {
+    min-height: 100vh;
+    display: grid;
+    align-items: center;
+    padding: 2rem 1rem;
+}
+
+.auth-panel {
+    width: min(100%, 420px);
+    margin: 0 auto;
+}
+
+.profile-panel {
+    width: min(100%, 920px);
+    margin: 0 auto;
+}
+
+.admin-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.admin-sidebar {
+    background: var(--snt-sidebar-bg);
+    color: var(--snt-sidebar-text);
+}
+
+.admin-sidebar .nav-link {
+    color: var(--snt-sidebar-text);
+    border-radius: .375rem;
+}
+
+.admin-sidebar .nav-link:hover,
+.admin-sidebar .nav-link.active {
+    background: var(--snt-sidebar-active);
+    color: #fff;
+}
+
+.admin-sidebar-heading {
+    color: var(--snt-sidebar-muted);
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.admin-main {
+    min-width: 0;
+}
+
+.admin-topbar,
+.portal-topbar {
+    min-height: 64px;
+}
+
+.portal-shell {
+    min-height: 100vh;
+}
+
+.portal-nav {
+    row-gap: .25rem;
+}
+
+.portal-main {
+    width: min(100%, 1180px);
+    margin: 0 auto;
+}
+
+.statement-print-page {
+    min-height: 100vh;
+    background: #e9edf2;
+    padding: 24px;
+}
+
+.statement-print-toolbar {
+    width: min(100%, 960px);
+    margin: 0 auto 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.statement-print-document {
+    width: min(100%, 960px);
+    margin: 0 auto;
+    padding: 32px;
+    background: #fff;
+    color: #111;
+    box-shadow: 0 16px 40px rgba(23, 32, 42, .12);
+}
+
+.statement-print-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #111;
+}
+
+.statement-print-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.statement-print-header p {
+    margin: 0;
+}
+
+.statement-print-amount {
+    min-width: 220px;
+    text-align: right;
+}
+
+.statement-print-amount div:last-child {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.statement-print-warning {
+    margin-top: 20px;
+    padding: 10px 12px;
+    border: 1px solid #946200;
+    background: #fff4d6;
+}
+
+.statement-print-section {
+    margin-top: 24px;
+}
+
+.statement-print-section h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+}
+
+.statement-print-section h3 {
+    margin: 16px 0 8px;
+    font-size: 15px;
+}
+
+.statement-print-details {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 6px 16px;
+    margin: 0;
+}
+
+.statement-print-details dt {
+    font-weight: 600;
+}
+
+.statement-print-details dd {
+    margin: 0;
+}
+
+.statement-payment-qr {
+    max-width: 280px;
+    margin-left: auto;
+    text-align: center;
+}
+
+.statement-payment-qr img {
+    width: 100%;
+    height: auto;
+    border: 1px solid #cfd6df;
+    background: #fff;
+}
+
+.statement-print-payment-block {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+.statement-print-payment-qr {
+    text-align: center;
+    font-size: 12px;
+    color: #5f6b7a;
+}
+
+.statement-print-payment-qr img {
+    display: block;
+    width: 320px;
+    height: 320px;
+    margin-bottom: 6px;
+    border: 1px solid #111;
+}
+
+.statement-print-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.statement-print-summary > div {
+    padding: 12px;
+    border: 1px solid #cfd6df;
+}
+
+.statement-print-summary span {
+    display: block;
+    margin-bottom: 6px;
+    color: #5f6b7a;
+    font-size: 13px;
+}
+
+.statement-print-summary strong {
+    font-size: 18px;
+}
+
+.billing-run-workflow {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 8px;
+}
+
+.billing-run-workflow .list-group-item {
+    border-width: 1px;
+    border-radius: var(--bs-border-radius);
+}
+
+.statement-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.statement-print-table th,
+.statement-print-table td {
+    padding: 8px;
+    border: 1px solid #cfd6df;
+    vertical-align: top;
+}
+
+.statement-print-table th {
+    background: #f1f3f6;
+    font-weight: 600;
+}
+
+.statement-print-table-sm {
+    font-size: 13px;
+}
+
+@media (min-width: 992px) {
+    .admin-sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+    }
+
+    .admin-topbar,
+    .portal-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .admin-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-sidebar {
+        position: static;
+    }
+
+    .statement-payment-qr {
+        margin-left: 0;
+    }
+
+    .statement-print-payment-block {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .portal-topbar {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .portal-main {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 12mm;
+    }
+
+    body {
+        min-height: 0;
+        background: #fff;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .statement-print-page {
+        min-height: 0;
+        padding: 0;
+        background: #fff;
+    }
+
+    .statement-print-document {
+        width: 100%;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .statement-print-section,
+    .statement-print-table tr {
+        break-inside: avoid;
+    }
+
+    .statement-print-table th {
+        background: #f1f3f6 !important;
+        print-color-adjust: exact;
+    }
+}

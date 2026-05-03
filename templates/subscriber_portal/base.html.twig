@@ -1,0 +1,78 @@
+{% extends 'base.html.twig' %}
+
+{% set current_workspace = subscriber_portal_context.currentWorkspace %}
+{% set available_workspaces = subscriber_portal_context.availableWorkspaces %}
+{% set current_route = app.request.attributes.get('_route') %}
+
+{% block body %}
+    <div class="portal-shell">
+        <header class="portal-topbar bg-white border-bottom px-4 py-3">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <a class="fs-5 fw-semibold text-decoration-none text-body" href="{{ path('app_subscriber_portal') }}">КомУчёт</a>
+
+                    <nav class="nav nav-pills portal-nav" aria-label="Личный кабинет">
+                        <a class="nav-link {{ current_route == 'app_subscriber_portal' or current_route starts with 'app_subscriber_portal_account' ? 'active' }}" href="{{ path('app_subscriber_portal') }}">Главная</a>
+                    </nav>
+
+                    {% if available_workspaces|length > 1 %}
+                        <form method="post" action="{{ path('app_subscriber_portal_workspace_switch') }}" class="d-flex align-items-end gap-2">
+                            <input type="hidden" name="_token" value="{{ csrf_token('switch_portal_workspace') }}">
+
+                            <div>
+                                <label for="portal-current-workspace" class="small text-secondary">Текущее хозяйство</label>
+                                <select
+                                    id="portal-current-workspace"
+                                    class="form-select form-select-sm"
+                                    name="workspace_uuid"
+                                    aria-label="Текущее хозяйство"
+                                >
+                                    {% for workspace in available_workspaces %}
+                                        <option value="{{ workspace.uuid.toRfc4122() }}" {{ current_workspace and workspace.uuid.toRfc4122() == current_workspace.uuid.toRfc4122() ? 'selected' }}>
+                                            {{ workspace.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <button class="btn btn-outline-secondary btn-sm" type="submit">
+                                Сменить
+                            </button>
+                        </form>
+                    {% else %}
+                        <div data-current-workspace-summary>
+                            <div class="fw-semibold">{{ current_workspace ? current_workspace.name : 'Хозяйство не выбрано' }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <div class="text-end">
+                        <div class="fw-semibold">{{ app.user.primaryEmail ?? 'Пользователь без email' }}</div>
+                        <div class="small text-secondary">Личный кабинет</div>
+                    </div>
+
+                    {% if is_granted('WORKSPACE_ACCESS') %}
+                        <a class="btn btn-outline-primary btn-sm" href="{{ path('app_admin') }}">Админка</a>
+                    {% endif %}
+
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ path('app_profile') }}">Профиль</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="{{ logout_path() }}">Выйти</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="portal-main p-4">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ type }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            {% block portal_body %}{% endblock %}
+        </main>
+    </div>
+{% endblock %}

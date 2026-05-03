@@ -1,0 +1,99 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Платежные Реквизиты{% endblock %}
+
+{% block admin_body %}
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Платежные реквизиты</h1>
+            <p class="text-secondary mb-0">Банковские реквизиты, которые копируются в сохраненные квитанции.</p>
+        </div>
+        <a class="btn btn-primary" href="{{ path('app_admin_payment_requisite_profile_new') }}">Добавить реквизиты</a>
+    </div>
+
+    <section class="card mb-4">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Активные назначения</h2>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Область</th>
+                            <th>Профиль</th>
+                            <th>Действует с</th>
+                            <th>Назначено</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for assignment in open_assignments %}
+                        <tr>
+                            <td>{{ assignment.scopeLabel }}</td>
+                            <td>
+                                <a href="{{ path('app_admin_payment_requisite_profile_show', {'uuid': assignment.paymentRequisiteProfile.uuid}) }}">
+                                    {{ assignment.paymentRequisiteProfile.name }}
+                                </a>
+                            </td>
+                            <td>{{ assignment.validFrom|date('d.m.Y') }}</td>
+                            <td>{{ assignment.assignedAt|workspace_datetime }}</td>
+                            <td class="text-end">
+                                <form method="post" action="{{ path('app_admin_payment_requisite_assignment_close', {'assignmentUuid': assignment.uuid}) }}" onsubmit="return confirm('Снять это назначение реквизитов?');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('close_assignment' ~ assignment.uuid) }}">
+                                    <button class="btn btn-sm btn-outline-danger">Снять</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary py-4">Реквизиты пока не назначены.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'code', label: 'Код', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'name', label: 'Название', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'recipient_name', label: 'Получатель', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'bank_name', label: 'Банк', sort: sort}) }}</th>
+                        <th>{{ include('admin/_sort_link.html.twig', {field: 'valid_from', label: 'Действует', sort: sort}) }}</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for profile in payment_requisite_profiles %}
+                    <tr>
+                        <td><code>{{ profile.code }}</code></td>
+                        <td class="fw-semibold">{{ profile.name }}</td>
+                        <td>{{ profile.recipientName }}</td>
+                        <td class="text-secondary">{{ profile.bankName }}</td>
+                        <td>
+                            {{ profile.validFrom|date('d.m.Y') }} -
+                            {{ profile.validTo ? profile.validTo|date('d.m.Y') : 'бессрочно' }}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a class="btn btn-outline-secondary" href="{{ path('app_admin_payment_requisite_profile_show', {'uuid': profile.uuid}) }}">Открыть</a>
+                                <a class="btn btn-outline-primary" href="{{ path('app_admin_payment_requisite_profile_edit', {'uuid': profile.uuid}) }}">Изменить</a>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-5">Платежные реквизиты пока не созданы.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {{ include('admin/_pagination.html.twig', {pagination: pagination}) }}
+    </section>
+{% endblock %}

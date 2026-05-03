@@ -1,0 +1,48 @@
+{% if pagination.totalItems > pagination.perPage %}
+    {% set current_route = app.request.attributes.get('_route') %}
+    {% set route_params = app.request.attributes.get('_route_params')|default({}) %}
+    {% set anchor_suffix = anchor is defined and anchor ? '#' ~ anchor : '' %}
+
+    <nav class="d-flex flex-wrap align-items-center justify-content-between gap-3 p-3 border-top" aria-label="Пагинация">
+        <div class="small text-secondary">
+            Показано {{ pagination.firstItemNumber }}-{{ pagination.lastItemNumber }} из {{ pagination.totalItems }}
+        </div>
+
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {{ pagination.hasPreviousPage ? '' : 'disabled' }}">
+                <a class="page-link" href="{{ path(current_route, route_params|merge(app.request.query.all)|merge({(page_param): pagination.previousPage})) }}{{ anchor_suffix }}">Назад</a>
+            </li>
+
+            {% set start_page = max(1, pagination.currentPage - 2) %}
+            {% set end_page = min(pagination.totalPages, pagination.currentPage + 2) %}
+
+            {% if start_page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ path(current_route, route_params|merge(app.request.query.all)|merge({(page_param): 1})) }}{{ anchor_suffix }}">1</a>
+                </li>
+                {% if start_page > 2 %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endif %}
+
+            {% for page in start_page..end_page %}
+                <li class="page-item {{ page == pagination.currentPage ? 'active' }}">
+                    <a class="page-link" href="{{ path(current_route, route_params|merge(app.request.query.all)|merge({(page_param): page})) }}{{ anchor_suffix }}">{{ page }}</a>
+                </li>
+            {% endfor %}
+
+            {% if end_page < pagination.totalPages %}
+                {% if end_page < pagination.totalPages - 1 %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ path(current_route, route_params|merge(app.request.query.all)|merge({(page_param): pagination.totalPages})) }}{{ anchor_suffix }}">{{ pagination.totalPages }}</a>
+                </li>
+            {% endif %}
+
+            <li class="page-item {{ pagination.hasNextPage ? '' : 'disabled' }}">
+                <a class="page-link" href="{{ path(current_route, route_params|merge(app.request.query.all)|merge({(page_param): pagination.nextPage})) }}{{ anchor_suffix }}">Вперед</a>
+            </li>
+        </ul>
+    </nav>
+{% endif %}

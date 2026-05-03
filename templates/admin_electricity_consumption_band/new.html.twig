@@ -1,0 +1,16 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Новый Диапазон Потребления{% endblock %}
+
+{% block admin_body %}
+    <div class="mb-4">
+        <h1 class="h3 mb-1">Новый диапазон потребления</h1>
+        <p class="text-secondary mb-0">Например: social_norm, above_social_norm.</p>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            {{ include('admin_electricity_consumption_band/_form.html.twig') }}
+        </div>
+    </section>
+{% endblock %}

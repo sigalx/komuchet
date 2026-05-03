@@ -1,0 +1,9 @@
+{{ form_start(form) }}
+    {{ form_row(form.number) }}
+    {{ form_row(form.notes) }}
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">{{ button_label|default('Сохранить') }}</button>
+        <a class="btn btn-outline-secondary" href="{{ path('app_admin_account_index') }}">Отмена</a>
+    </div>
+{{ form_end(form) }}
